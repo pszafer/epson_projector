@@ -7,7 +7,7 @@ import async_timeout
 
 from .const import (ACCEPT_ENCODING, ACCEPT_HEADER, ALL,
                     EPSON_KEY_COMMANDS, HTTP_OK, INV_SOURCES, SOURCE,
-                    TIMEOUT_TIMES, TURN_OFF, TURN_ON)
+                    TIMEOUT_TIMES, TURN_OFF, TURN_ON, BUSY, POWER)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -90,15 +90,19 @@ class Projector:
         """Get property state from device."""
         _LOGGER.debug("Getting property %s", command)
         if self.__checkLock():
-            return False
+            return BUSY
         timeout = self.__get_timeout(command)
         response = await self.send_request(
             timeout=timeout,
             params=EPSON_KEY_COMMANDS[command],
             type='json_query')
+        if not response:
+            return False
         resp = await response.json()
-        reply_code = resp['projector']['feature']['reply']
-        return reply_code
+        try:
+            return resp['projector']['feature']['reply']
+        except KeyError:
+            return BUSY
 
     async def send_command(self, command):
         """Send command to Epson."""

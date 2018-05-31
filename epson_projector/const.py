@@ -19,6 +19,7 @@ BACK = "BACK"
 TURN_ON = "TURN_ON"
 TURN_OFF = "TURN_OFF"
 ALL = "ALL"
+BUSY = 2
 
 EPSON_CODES = {
     'PWR': '01'
@@ -92,7 +93,8 @@ SOURCE_LIST = {
     '52': 'USB',
     '53': 'LAN',
     '56': 'WDF',
-    'A0': 'HDMI2'
+    'A0': 'HDMI2',
+    '41': 'VIDEO'
 }
 
 INV_SOURCES = {v: k for k, v in DEFAULT_SOURCES.items()}
