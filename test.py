@@ -1,33 +1,25 @@
-"""
-Test of epson.
-"""
-
+"""Test and example of usage of Epson module."""
 import epson_projector as epson
-import logging
+from epson_projector.const import (POWER)
 
-import sys
-import time
-
-root = logging.getLogger()
-logging.getLogger('asyncio').setLevel(logging.DEBUG)
-root.setLevel(logging.DEBUG)
-
-ch = logging.StreamHandler(sys.stdout)
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-root.addHandler(ch)
+import asyncio
+import aiohttp
 
 
+async def main():
+    """Run main with aiohttp ClientSession."""
+    async with aiohttp.ClientSession() as session:
+        await run(session)
 
-def _run(f):
-    print("test")
-    projector = epson.Projector('192.1684.131', port=80, encryption=False)
 
-    resp = yield from projector.test('PWR')
-    return resp
-    # print(test)
+async def run(websession):
+    """Use Projector class of epson module and check if it is turned on."""
+    projector = epson.Projector(
+        host='HOSTNAME',
+        websession=websession,
+        port=80,
+        encryption=False)
+    data = await projector.get_property(POWER)
+    print(data)
 
-obj = _run(3)
-print(*obj, sep='\n')
-# print(isOn)
+asyncio.get_event_loop().run_until_complete(main())
