@@ -19,7 +19,8 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/pszafer/epson_projector",
     install_requires=list(val.strip() for val in open('requirements.txt')),
-    packages=setuptools.find_packages(),
+    packages=['epson_projector'],
+    keywords=['epson', 'projector'],
     classifiers=(
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

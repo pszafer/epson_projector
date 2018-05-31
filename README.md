@@ -1,4 +1,4 @@
-# Epson_projector module
+# Epson-projector module
 ## Asynchronous library to control epson projectors
 
 Requires Python 3.5. asyncio, aiohttp.
