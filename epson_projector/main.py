@@ -5,9 +5,9 @@ import time
 import aiohttp
 import async_timeout
 
-from .const import (ACCEPT_ENCODING, ACCEPT_HEADER, ALL,
+from .const import (ACCEPT_ENCODING, ACCEPT_HEADER, ALL, BUSY,
                     EPSON_KEY_COMMANDS, HTTP_OK, INV_SOURCES, SOURCE,
-                    TIMEOUT_TIMES, TURN_OFF, TURN_ON, BUSY, POWER)
+                    TIMEOUT_TIMES, TURN_OFF, TURN_ON)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -98,9 +98,8 @@ class Projector:
             type='json_query')
         if not response:
             return False
-        resp = await response.json()
         try:
-            return resp['projector']['feature']['reply']
+            return response['projector']['feature']['reply']
         except KeyError:
             return BUSY
 
@@ -134,8 +133,10 @@ class Projector:
                         return False
                     if command == TURN_ON and self._powering_on:
                         self._powering_on = False
+                    if type == 'json_query':
+                        return await response.json()
                     return response
-        except aiohttp.ClientError:
+        except (aiohttp.ClientError, aiohttp.ClientConnectionError):
             _LOGGER.error("Error request")
             return False
 

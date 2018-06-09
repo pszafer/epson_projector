@@ -15,7 +15,7 @@ async def main():
 async def run(websession):
     """Use Projector class of epson module and check if it is turned on."""
     projector = epson.Projector(
-        host='HOSTNAME',
+        host='192.168.4.131',
         websession=websession,
         port=80,
         encryption=False)
