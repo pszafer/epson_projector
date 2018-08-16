@@ -5,6 +5,11 @@ HTTP_OK = 200
 ACCEPT_ENCODING = "gzip, deflate"
 ACCEPT_HEADER = "application/json, text/javascript"
 
+HELLO_COMMAND = "ESC/VP.net\x10\x03\x00\x00\x00\x00"
+ESCVPNETNAME = "ESC/VP.net"
+ESCVPNAME = "ESC/VP"
+ERROR = "ERR"
+
 POWER = "PWR"
 CMODE = "CMODE"
 SOURCE = "SOURCE"
