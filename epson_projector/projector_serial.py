@@ -3,6 +3,7 @@ import logging
 
 import asyncio
 import serial_asyncio
+from serial.serialutil import SerialException
 import async_timeout
 
 from .const import (BUSY, ERROR)
@@ -25,6 +26,8 @@ class ProjectorSerial:
         """
         self._host = host
         self._isOpen = False
+        self._reader = None
+        self._writer = None
         if loop is None:
             self._loop = asyncio.get_event_loop()
         else:
@@ -37,21 +40,31 @@ class ProjectorSerial:
             with async_timeout.timeout(10):
                 self._reader,
                 self._writer = await serial_asyncio.open_serial_connection(
-                    host=self._host,
+                    url=self._host,
                     baudrate=9600,
                     loop=self._loop)
-                response = await self._reader.read(16)
-                if response.decode() == ":":
-                    self._isOpen = True
-                    _LOGGER.info("Connection open")
-                    returnvalue = True
+                if (self._reader and self._writer):
+                    response = await self._reader.read(16)
+                    if response.decode() == ":":
+                        self._isOpen = True
+                        _LOGGER.info("Connection open")
+                        returnvalue = True
+                    else:
+                        return self.close_connection_info()
                 else:
-                    _LOGGER.info("Cannot open serial to Epson")
-                    returnvalue = False
+                    return self.close_connection_info()
         except asyncio.TimeoutError:
             _LOGGER.error("Timeout error")
             returnvalue = False
+        except SerialException:
+            _LOGGER.error("Device not found")
+            returnvalue = False
         return returnvalue
+
+    def close_connection_info(self):
+        _LOGGER.info("Cannot open serial to Epson")
+        return False
+
 
     def close(self):
         if self._isOpen:
@@ -92,3 +105,5 @@ class ProjectorSerial:
                     _LOGGER.error("Error request")
                     return False
                 return response
+        else:
+            return False
