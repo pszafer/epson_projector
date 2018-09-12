@@ -1,1 +1,3 @@
 aiohttp>=3.3.0
+serial_asyncio>=0.4
+asyncio>=3.4.3

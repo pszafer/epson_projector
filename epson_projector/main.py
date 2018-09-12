@@ -61,7 +61,7 @@ class Projector:
         if self._lock.checkLock():
             return False
         self._lock.setLock(command)
-        return self._projector.send_command(command,
+        return await self._projector.send_command(command,
                                             self.__get_timeout(command))
 
     def __get_timeout(self, command):
