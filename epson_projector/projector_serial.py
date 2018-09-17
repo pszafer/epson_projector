@@ -10,6 +10,8 @@ from .const import (BUSY, ERROR)
 
 _LOGGER = logging.getLogger(__name__)
 
+DEFAULT_TIMEOUT = 10
+
 
 class ProjectorSerial:
     """
@@ -27,6 +29,7 @@ class ProjectorSerial:
         self._host = host
         self._reader = None
         self._writer = None
+        self._isOpen = False
         if loop is None:
             self._loop = asyncio.get_event_loop()
         else:
@@ -35,13 +38,14 @@ class ProjectorSerial:
     async def async_init(self):
         """Async init to open serial connection with projector."""
         try:
-            with async_timeout.timeout(TIMEOUT):
+            with async_timeout.timeout(DEFAULT_TIMEOUT):
                 (self._reader,
                  self._writer) = await serial_asyncio.open_serial_connection(
                     url=self._host,
                     baudrate=9600,
                     loop=self._loop)
                 if (self._reader and self._writer):
+                    self._isOpen = True
                     response = await self._reader.read(16)
                     if str(response.decode()) == ":":
                         _LOGGER.info("Connection open")
@@ -89,15 +93,13 @@ class ProjectorSerial:
         """Send request to Epson over serial."""
         if self._writer is None:
             await self.async_init()
-        if not self._writer.is_closing() and command:
+        if self._writer and not self._writer.is_closing() and command:
             try:
                 with async_timeout.timeout(timeout):
                     self._writer.write(command.encode())
                     response = await self._reader.read(16)
-                    if response[0].decode() != ":":
-                        response = response[1:].decode().replace("\r:", "")
-                    else:
-                        response = ERROR
+                    response = response.decode().replace("\r:", "")
+                    _LOGGER.info("Response from Epson %s", response)
                     if response == ERROR:
                         _LOGGER.error("Error request")
                     else:
