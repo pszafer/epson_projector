@@ -54,7 +54,7 @@ class ProjectorSerial:
                         _LOGGER.info("Connection established, \
                                       but wrong response.")
         except asyncio.TimeoutError:
-            _LOGGER.error("Timeout error")
+            _LOGGER.error("Timeout error during connection")
         except SerialException:
             _LOGGER.error("Device not found")
         return self.closed_connection_info()
@@ -69,6 +69,7 @@ class ProjectorSerial:
 
     async def get_property(self, command, timeout):
         """Get property state from device."""
+        timeout = DEFAULT_TIMEOUT
         response = await self.send_request(
             timeout=timeout,
             command=command+'?\r'
@@ -79,9 +80,13 @@ class ProjectorSerial:
             return response.split('=')[1]
         except KeyError:
             return BUSY
+        except IndexError:
+            _LOGGER.error("Bad response %s", response)
+            return False
 
     async def send_command(self, command, timeout):
         """Send command to Epson."""
+        timeout = DEFAULT_TIMEOUT
         response = await self.send_request(
             timeout=timeout,
             command=command+'\r')
@@ -105,5 +110,5 @@ class ProjectorSerial:
                     else:
                         return response
             except asyncio.TimeoutError:
-                _LOGGER.error("Timeout error")
+                _LOGGER.error("Timeout error during sending request")
         return False
