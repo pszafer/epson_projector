@@ -46,8 +46,9 @@ class ProjectorSerial:
                     loop=self._loop)
                 if (self._reader and self._writer):
                     self._isOpen = True
-                    response = await self._reader.read(16)
-                    if str(response.decode()) == ":":
+                    self._writer.write(":\r".encode())
+                    response = await self._reader.readuntil(b'\r:')
+                    if str(response.decode().replace("\r", "")) == ":":
                         _LOGGER.info("Connection open")
                         return True
                     else:
@@ -102,8 +103,8 @@ class ProjectorSerial:
             try:
                 with async_timeout.timeout(timeout):
                     self._writer.write(command.encode())
-                    response = await self._reader.read(16)
-                    response = response.decode().replace("\r:", "")
+                    response = await self._reader.readuntil(b'\r:')
+                    response = response[:-2].decode()
                     _LOGGER.info("Response from Epson %s", response)
                     if response == ERROR:
                         _LOGGER.error("Error request")

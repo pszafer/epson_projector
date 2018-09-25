@@ -1,9 +1,15 @@
 import asyncio
 import epson_projector as epson
-from epson_projector.const import (POWER)
+from epson_projector.const import (POWER, PWR_ON)
 import logging
 
 _LOGGER = logging.getLogger(__name__)
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+_LOGGER.addHandler(console_handler)
+_LOGGER.setLevel(logging.DEBUG)
 
 
 async def main_serial(loop):
@@ -12,12 +18,12 @@ async def main_serial(loop):
 
 
 async def run(loop):
-    projector = epson.Projector(host='/dev/ttyVirtualS0',
+    projector = epson.Projector(host='/dev/ttyUSB1',
                                 type='serial',
                                 loop=loop)
     data = await projector.get_property(POWER)
     print(data)
-    data2 = await projector.send_command(POWER)
+    data2 = await projector.send_command(PWR_ON)
     print(data2)
     projector.close()
 
