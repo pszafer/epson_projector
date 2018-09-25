@@ -4,9 +4,9 @@ import logging
 import asyncio
 import serial_asyncio
 from serial.serialutil import SerialException
+from .const import (ESCVP_HELLO_COMMAND, CR, CR_COLON, GET_CR,
+                    BUSY, ERROR)
 import async_timeout
-
-from .const import (BUSY, ERROR)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,9 +46,9 @@ class ProjectorSerial:
                     loop=self._loop)
                 if (self._reader and self._writer):
                     self._isOpen = True
-                    self._writer.write(":\r".encode())
-                    response = await self._reader.readuntil(b'\r:')
-                    if str(response.decode().replace("\r", "")) == ":":
+                    self._writer.write(ESCVP_HELLO_COMMAND.encode())
+                    response = await self._reader.readuntil(CR_COLON.encode())
+                    if str(response.decode().replace(CR, "")) == ":":
                         _LOGGER.info("Connection open")
                         return True
                     else:
@@ -70,11 +70,9 @@ class ProjectorSerial:
 
     async def get_property(self, command, timeout):
         """Get property state from device."""
-        timeout = DEFAULT_TIMEOUT
         response = await self.send_request(
             timeout=timeout,
-            command=command+'?\r'
-            )
+            command=command+GET_CR)
         if not response:
             return False
         try:
@@ -87,10 +85,9 @@ class ProjectorSerial:
 
     async def send_command(self, command, timeout):
         """Send command to Epson."""
-        timeout = DEFAULT_TIMEOUT
         response = await self.send_request(
             timeout=timeout,
-            command=command+'\r')
+            command=command+CR)
         if not response:
             return False
         return response
@@ -103,7 +100,8 @@ class ProjectorSerial:
             try:
                 with async_timeout.timeout(timeout):
                     self._writer.write(command.encode())
-                    response = await self._reader.readuntil(b'\r:')
+                    response = await self._reader.readuntil(
+                        CR_COLON.encode())
                     response = response[:-2].decode()
                     _LOGGER.info("Response from Epson %s", response)
                     if response == ERROR:

@@ -1,6 +1,6 @@
 import asyncio
 import epson_projector as epson
-from epson_projector.const import (POWER)
+from epson_projector.const import (POWER, PWR_OFF)
 
 
 async def main_tcp(loop):
@@ -15,6 +15,7 @@ async def run(loop):
                                 loop=loop)
     data = await projector.get_property(POWER)
     print(data)
+    await projector.send_command(PWR_OFF)
     projector.close()
 
 loop = asyncio.get_event_loop()

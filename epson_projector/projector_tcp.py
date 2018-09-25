@@ -4,7 +4,8 @@ import logging
 import asyncio
 import async_timeout
 
-from .const import (BUSY, HELLO_COMMAND, ESCVPNETNAME, ERROR)
+from .const import (BUSY, ESCVPNET_HELLO_COMMAND,
+                    ESCVPNETNAME, ERROR, CR, CR_COLON, GET_CR)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ class ProjectorTcp:
                     host=self._host,
                     port=self._port,
                     loop=self._loop)
-                self._writer.write(HELLO_COMMAND.encode())
+                self._writer.write(ESCVPNET_HELLO_COMMAND.encode())
                 response = await self._reader.read(16)
                 if (response[0:10].decode() == ESCVPNETNAME and
                         response[14] == 32):
@@ -66,7 +67,7 @@ class ProjectorTcp:
         """Get property state from device."""
         response = await self.send_request(
             timeout=timeout,
-            command=command+'?\r'
+            command=command+GET_CR
             )
         if not response:
             return False
@@ -79,7 +80,7 @@ class ProjectorTcp:
         """Send command to Epson."""
         response = await self.send_request(
             timeout=timeout,
-            command=command+'\r')
+            command=command+CR)
         return response
 
     async def send_request(self, timeout, command):
@@ -91,7 +92,7 @@ class ProjectorTcp:
                 self._writer.write(command.encode())
                 # self._writer.write('\r'.encode())
                 response = await self._reader.read(16)
-                response = response.decode().replace("\r:", "")
+                response = response.decode().replace(CR_COLON, "")
                 if response == ERROR:
                     _LOGGER.error("Error request")
                     return False
