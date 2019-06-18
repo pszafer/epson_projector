@@ -19,6 +19,18 @@ BACK = "BACK"
 TURN_ON = "TURN_ON"
 TURN_OFF = "TURN_OFF"
 ALL = "ALL"
+IMGPROC_FINE = "IMGPROC_FINE"
+IMGPROC_FAST = "IMGPROC_FAST"
+MEMORY_1 = "MEMORY_1"
+MEMORY_2 = "MEMORY_2"
+MEMORY_3 = "MEMORY_3"
+MEMORY_4 = "MEMORY_4"
+MEMORY_5 = "MEMORY_5"
+MEMORY_6 = "MEMORY_6"
+MEMORY_7 = "MEMORY_7"
+MEMORY_8 = "MEMORY_8"
+MEMORY_9 = "MEMORY_9"
+MEMORY_10 = "MEMORY_10"
 BUSY = 2
 
 EPSON_CODES = {
@@ -67,6 +79,18 @@ EPSON_KEY_COMMANDS = {
     "STOP": [('KEY', 'D2')],
     "BACK": [('KEY', 'D4')],
     "FAST": [('KEY', 'D5')],
+    "IMGPROC_FINE": [('IMGPROC', '01')],
+    "IMGPROC_FAST": [('IMGPROC', '02')],
+    "MEMORY_1": [('POPMEM', '02 01')],
+    "MEMORY_2": [('POPMEM', '02 02')],
+    "MEMORY_3": [('POPMEM', '02 03')],
+    "MEMORY_4": [('POPMEM', '02 04')],
+    "MEMORY_5": [('POPMEM', '02 05')],
+    "MEMORY_6": [('POPMEM', '02 06')],
+    "MEMORY_7": [('POPMEM', '02 07')],
+    "MEMORY_8": [('POPMEM', '02 08')],
+    "MEMORY_9": [('POPMEM', '02 09')],
+    "MEMORY_10": [('POPMEM', '02 0A')]
 }
 
 TIMEOUT_TIMES = {
