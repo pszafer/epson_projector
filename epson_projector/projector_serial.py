@@ -4,7 +4,7 @@ import logging
 import asyncio
 import serial_asyncio
 from serial.serialutil import SerialException
-from .const import (ESCVP_HELLO_COMMAND, CR, CR_COLON, GET_CR,
+from .const import (ESCVP_HELLO_COMMAND, COLON, CR, CR_COLON, GET_CR,
                     BUSY, ERROR)
 import async_timeout
 
@@ -47,13 +47,13 @@ class ProjectorSerial:
                 if (self._reader and self._writer):
                     self._isOpen = True
                     self._writer.write(ESCVP_HELLO_COMMAND.encode())
-                    response = await self._reader.readuntil(CR_COLON.encode())
-                    if str(response.decode().replace(CR, "")) == ":":
+                    response = await self._reader.readuntil(COLON.encode())
+                    if str(response.decode().strip(CR)) == ":":
                         _LOGGER.info("Connection open")
                         return True
                     else:
-                        _LOGGER.info("Connection established, \
-                                      but wrong response.")
+                        _LOGGER.info("Connection established, "
+                                     "but wrong response %r.", response)
         except asyncio.TimeoutError:
             _LOGGER.error("Timeout error during connection")
         except SerialException:
@@ -101,9 +101,9 @@ class ProjectorSerial:
                 with async_timeout.timeout(timeout):
                     self._writer.write(command.encode())
                     response = await self._reader.readuntil(
-                        CR_COLON.encode())
-                    response = response[:-2].decode()
-                    _LOGGER.info("Response from Epson %s", response)
+                        COLON.encode())
+                    response = response[:-1].decode().rstrip(CR)
+                    _LOGGER.info("Response from Epson %r", response)
                     if response == ERROR:
                         _LOGGER.error("Error request")
                     else:
