@@ -88,8 +88,6 @@ class ProjectorSerial:
         response = await self.send_request(
             timeout=timeout,
             command=command+CR)
-        if not response:
-            return False
         return response
 
     async def send_request(self, timeout, command):
