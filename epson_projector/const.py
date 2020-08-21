@@ -96,6 +96,7 @@ EPSON_KEY_COMMANDS = {
 TIMEOUT_TIMES = {
     'TURN_ON': 40,
     'TURN_OFF': 10,
+    'PWR': 10,
     'SOURCE': 5,
     'ALL': 3
 }
