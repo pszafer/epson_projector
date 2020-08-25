@@ -22,7 +22,7 @@ class Lock:
         self._isLocked = True
         self._timer = time.time()
 
-    def unLock(self):
+    def __unlock(self):
         """Unlock sending requests to projector."""
         self._operation = False
         self._timer = 0
@@ -37,7 +37,7 @@ class Lock:
         """
         if self._isLocked:
             if (time.time() - self._timer) > TIMEOUT_TIMES[self._operation]:
-                self.__unLock()
+                self.__unlock()
                 return False
             return True
         return False

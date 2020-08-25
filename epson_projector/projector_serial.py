@@ -4,7 +4,7 @@ import logging
 import asyncio
 import serial_asyncio
 from serial.serialutil import SerialException
-from .const import (ESCVP_HELLO_COMMAND, COLON, CR, CR_COLON, GET_CR,
+from .const import (ESCVP_HELLO_COMMAND, COLON, CR, GET_CR,
                     BUSY, ERROR)
 import async_timeout
 
