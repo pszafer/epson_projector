@@ -16,7 +16,7 @@ class Projector:
     """
 
     def __init__(self, host, websession=None, type='http', port=80,
-                 encryption=False, loop=None):
+                 encryption=False, loop=None, timeout_scale=1.0):
         """
         Epson Projector controller.
 
@@ -25,10 +25,12 @@ class Projector:
         :param int port:        Port to connect to if using HTTP/TCP connection
         :param bool encryption: User encryption to connect, only for HTTP.
         :param obj loop:        Asyncio loop to pass for TCP/serial connection
+        :param timeout_scale    Factor to multiply default timeouts by (for slow projectors)
 
         """
         self._lock = Lock()
         self._type = type
+        self._timeout_scale = timeout_scale
         if self._type == 'http':
             self._host = host
             from .projector_http import ProjectorHttp
@@ -66,6 +68,6 @@ class Projector:
 
     def __get_timeout(self, command):
         if command in TIMEOUT_TIMES:
-            return TIMEOUT_TIMES[command]
+            return TIMEOUT_TIMES[command] * self._timeout_scale
         else:
-            return TIMEOUT_TIMES['ALL']
+            return TIMEOUT_TIMES['ALL'] * self._timeout_scale
