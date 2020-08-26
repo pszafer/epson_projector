@@ -49,6 +49,9 @@ class Projector:
         """Close connection. Not used in HTTP"""
         self._projector.close()
 
+    def set_timeout_scale(self, timeout_scale=1.0):
+        self._timeout_scale = timeout_scale
+
     async def get_property(self, command):
         """Get property state from device."""
         _LOGGER.debug("Getting property %s", command)
