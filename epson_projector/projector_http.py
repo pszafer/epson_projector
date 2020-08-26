@@ -88,6 +88,6 @@ class ProjectorHttp:
                     if type == 'json_query':
                         return await response.json()
                     return response
-        except (aiohttp.ClientError, aiohttp.ClientConnectionError):
+        except (aiohttp.ClientError, aiohttp.ClientConnectionError, TimeoutError):
             _LOGGER.error("Error request")
             return False

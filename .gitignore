@@ -5,3 +5,4 @@ pip-selfcheck.json
 pyvenv.cfg
 dist
 epson_projector.egg-info
+venv
