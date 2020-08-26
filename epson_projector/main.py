@@ -1,13 +1,9 @@
 """Main of Epson projector module."""
 import logging
-import time
 
-import aiohttp
-import async_timeout
+from .const import (BUSY, TIMEOUT_TIMES)
 
-from .const import (ACCEPT_ENCODING, ACCEPT_HEADER, ALL, BUSY,
-                    EPSON_KEY_COMMANDS, HTTP_OK, INV_SOURCES, SOURCE,
-                    TIMEOUT_TIMES, TURN_OFF, TURN_ON)
+from .lock import Lock
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,129 +15,59 @@ class Projector:
     Control your projector with Python.
     """
 
-    def __init__(self, host, websession, port=80, encryption=False):
+    def __init__(self, host, websession=None, type='http', port=80,
+                 encryption=False, loop=None, timeout_scale=1.0):
         """
         Epson Projector controller.
 
-        :param str ip:          IP address of Projector
-        :param int port:        Port to connect to. Default 80.
-        :param bool encryption: User encryption to connect
+        :param str host:        Hostname/IP/serial to the projector
+        :param obj websession:  Websession to pass for HTTP protocol
+        :param int port:        Port to connect to if using HTTP/TCP connection
+        :param bool encryption: User encryption to connect, only for HTTP.
+        :param obj loop:        Asyncio loop to pass for TCP/serial connection
+        :param timeout_scale    Factor to multiply default timeouts by (for slow projectors)
 
         """
-        self._host = host
-        self._port = port
-        self._encryption = encryption
-        self._powering_on = False
-        http_proto = 'https' if self._encryption else 'http'
-        self._http_url = '{http_proto}://{host}:{port}/cgi-bin/'.format(
-            http_proto=http_proto,
-            host=self._host,
-            port=self._port)
-        referer = "{http_proto}://{host}:{port}/cgi-bin/webconf".format(
-            http_proto=http_proto,
-            host=self._host,
-            port=self._port)
-        self._headers = {
-            "Accept-Encoding": ACCEPT_ENCODING,
-            "Accept": ACCEPT_HEADER,
-            "Referer": referer
-        }
-        self.websession = websession
-        self.__initLock()
+        self._lock = Lock()
+        self._type = type
+        self._timeout_scale = timeout_scale
+        if self._type == 'http':
+            self._host = host
+            from .projector_http import ProjectorHttp
+            self._projector = ProjectorHttp(host, websession,
+                                            port, encryption)
+        elif self._type == 'tcp':
+            from .projector_tcp import ProjectorTcp
+            self._host = host
+            self._projector = ProjectorTcp(host, port, loop)
+        elif self._type == 'serial':
+            from .projector_serial import ProjectorSerial
+            self._host = host
+            self._projector = ProjectorSerial(host, loop)
 
-    def __initLock(self):
-        """Init lock for sending request to projector when it is busy."""
-        self._isLocked = False
-        self._timer = 0
-        self._operation = False
-
-    def __setLock(self, command):
-        """Set lock on requests."""
-        if command in (TURN_ON, TURN_OFF):
-            self._operation = command
-        elif command in INV_SOURCES:
-            self._operation = SOURCE
-        else:
-            self._operation = ALL
-        self._isLocked = True
-        self._timer = time.time()
-
-    def __unLock(self):
-        """Unlock sending requests to projector."""
-        self._operation = False
-        self._timer = 0
-        self._isLocked = False
-
-    def __checkLock(self):
-        """
-        Lock checking.
-
-        Check if there is lock pending and check if enough time
-        passed so requests can be unlocked.
-        """
-        if self._isLocked:
-            if (time.time() - self._timer) > TIMEOUT_TIMES[self._operation]:
-                self.__unLock()
-                return False
-            return True
-        return False
+    def close(self):
+        """Close connection. Not used in HTTP"""
+        self._projector.close()
 
     async def get_property(self, command):
         """Get property state from device."""
         _LOGGER.debug("Getting property %s", command)
-        if self.__checkLock():
+        if self._lock.checkLock():
             return BUSY
-        timeout = self.__get_timeout(command)
-        response = await self.send_request(
-            timeout=timeout,
-            params=EPSON_KEY_COMMANDS[command],
-            type='json_query')
-        if not response:
-            return False
-        try:
-            return response['projector']['feature']['reply']
-        except KeyError:
-            return BUSY
+        return await self._projector.get_property(command,
+                                                  self.__get_timeout(command))
 
     async def send_command(self, command):
         """Send command to Epson."""
         _LOGGER.debug("Sending command to projector %s", command)
-        if self.__checkLock():
+        if self._lock.checkLock():
             return False
-        self.__setLock(command)
-        response = await self.send_request(
-            timeout=self.__get_timeout(command),
-            params=EPSON_KEY_COMMANDS[command],
-            type='directsend',
-            command=command)
-        return response
-
-    async def send_request(self, params, timeout,
-                           type='json_query', command=False):
-        """Send request to Epson."""
-        try:
-            with async_timeout.timeout(timeout):
-                url = '{url}{type}'.format(
-                    url=self._http_url,
-                    type=type)
-                async with self.websession.get(
-                    url=url, params=params,
-                        headers=self._headers) as response:
-                    if response.status != HTTP_OK:
-                        _LOGGER.warning(
-                            "Error message %d from Epson.", response.status)
-                        return False
-                    if command == TURN_ON and self._powering_on:
-                        self._powering_on = False
-                    if type == 'json_query':
-                        return await response.json()
-                    return response
-        except (aiohttp.ClientError, aiohttp.ClientConnectionError):
-            _LOGGER.error("Error request")
-            return False
+        self._lock.setLock(command)
+        return await self._projector.send_command(command,
+                                                  self.__get_timeout(command))
 
     def __get_timeout(self, command):
         if command in TIMEOUT_TIMES:
-            return TIMEOUT_TIMES[command]
+            return TIMEOUT_TIMES[command] * self._timeout_scale
         else:
-            return TIMEOUT_TIMES['ALL']
+            return TIMEOUT_TIMES['ALL'] * self._timeout_scale

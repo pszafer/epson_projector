@@ -5,6 +5,17 @@ HTTP_OK = 200
 ACCEPT_ENCODING = "gzip, deflate"
 ACCEPT_HEADER = "application/json, text/javascript"
 
+ESCVPNET_HELLO_COMMAND = "ESC/VP.net\x10\x03\x00\x00\x00\x00"
+ESCVPNETNAME = "ESC/VP.net"
+ESCVPNAME = "ESC/VP"
+ERROR = "ERR"
+
+ESCVP_HELLO_COMMAND = "\r"
+COLON = ":"
+CR = "\r"
+CR_COLON = CR+COLON
+GET_CR = "?"+CR
+
 POWER = "PWR"
 CMODE = "CMODE"
 SOURCE = "SOURCE"
@@ -16,8 +27,10 @@ PLAY = "PLAY"
 PAUSE = "PAUSE"
 FAST = "FAST"
 BACK = "BACK"
-TURN_ON = "TURN_ON"
-TURN_OFF = "TURN_OFF"
+TURN_ON = "PWR ON"
+PWR_ON = "PWR ON"
+TURN_OFF = "PWR OFF"
+PWR_OFF = "PWR OFF"
 ALL = "ALL"
 IMGPROC_FINE = "IMGPROC_FINE"
 IMGPROC_FAST = "IMGPROC_FAST"
@@ -38,8 +51,8 @@ EPSON_CODES = {
 }
 
 EPSON_KEY_COMMANDS = {
-    "TURN_ON": [('KEY', '3B')],
-    "TURN_OFF": [('KEY', '3B'), ('KEY', '3B')],
+    "PWR ON": [('KEY', '3B')],
+    "PWR OFF": [('KEY', '3B'), ('KEY', '3B')],
     "HDMILINK": [('jsoncallback', 'HDMILINK?')],
     "PWR": [('jsoncallback', 'PWR?')],
     "SOURCE": [('jsoncallback', 'SOURCE?')],
@@ -94,8 +107,8 @@ EPSON_KEY_COMMANDS = {
 }
 
 TIMEOUT_TIMES = {
-    'TURN_ON': 40,
-    'TURN_OFF': 10,
+    'PWR ON': 40,
+    'PWR OFF': 10,
     'SOURCE': 5,
     'ALL': 3
 }
