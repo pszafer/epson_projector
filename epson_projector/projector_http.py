@@ -2,10 +2,11 @@
 import logging
 
 import aiohttp
+from asyncio.exceptions import TimeoutError as AsyncTimeout
 import async_timeout
 
 from .const import (ACCEPT_ENCODING, ACCEPT_HEADER, BUSY,
-                    EPSON_KEY_COMMANDS, HTTP_OK)
+                    EPSON_KEY_COMMANDS, HTTP_OK, STATE_UNAVAILABLE)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,6 +58,8 @@ class ProjectorHttp:
         if not response:
             return False
         try:
+            if response == STATE_UNAVAILABLE:
+                return STATE_UNAVAILABLE
             return response['projector']['feature']['reply']
         except KeyError:
             return BUSY
@@ -88,6 +91,6 @@ class ProjectorHttp:
                     if type == 'json_query':
                         return await response.json()
                     return response
-        except (aiohttp.ClientError, aiohttp.ClientConnectionError, TimeoutError):
+        except (aiohttp.ClientError, aiohttp.ClientConnectionError, TimeoutError, AsyncTimeout):
             _LOGGER.error("Error request")
-            return False
+            return STATE_UNAVAILABLE

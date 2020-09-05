@@ -179,3 +179,6 @@ CMODE_LIST_SET = {
     'theatre black': 'CMODE_THEATREBLACK',
     'theatre black 2': 'CMODE_THEATREBLACK2'
 }
+
+
+STATE_UNAVAILABLE = 'unavailable' 
