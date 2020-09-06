@@ -2,7 +2,7 @@
 import logging
 
 import aiohttp
-from asyncio.exceptions import TimeoutError as AsyncTimeout
+import asyncio
 import async_timeout
 
 from .const import (ACCEPT_ENCODING, ACCEPT_HEADER, BUSY,
@@ -91,6 +91,6 @@ class ProjectorHttp:
                     if type == 'json_query':
                         return await response.json()
                     return response
-        except (aiohttp.ClientError, aiohttp.ClientConnectionError, TimeoutError, AsyncTimeout):
+        except (aiohttp.ClientError, aiohttp.ClientConnectionError, TimeoutError, asyncio.exceptions.TimeoutError):
             _LOGGER.error("Error request")
             return STATE_UNAVAILABLE
