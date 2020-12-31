@@ -5,9 +5,12 @@ import asyncio
 import async_timeout
 
 from .const import (BUSY, ESCVPNET_HELLO_COMMAND,
-                    ESCVPNETNAME, ERROR, CR, CR_COLON, GET_CR)
+                    ESCVPNETNAME, ERROR, CR, CR_COLON, GET_CR, EPSON_CODES, POWER, PWR_ON, SERIAL_BYTE)
+from .timeout import get_timeout
 
 _LOGGER = logging.getLogger(__name__)
+
+
 
 
 class ProjectorTcp:
@@ -27,6 +30,7 @@ class ProjectorTcp:
         self._host = host
         self._port = port
         self._isOpen = False
+        self._serial = None
         if loop is None:
             self._loop = asyncio.get_event_loop()
         else:
@@ -97,3 +101,21 @@ class ProjectorTcp:
                     _LOGGER.error("Error request")
                     return False
                 return response
+    async def get_serial(self):
+        """Send TCP request for serial to Epson."""
+        if not self._serial:
+            if self._isOpen is False:
+                await self.async_init()
+            try:
+                with async_timeout.timeout(10):
+                    power_on = await self.get_property(POWER, get_timeout(POWER))
+                    if power_on != EPSON_CODES[POWER]:
+                        self._writer.write(SERIAL_BYTE)
+                        response = await self._reader.read(32)
+                        self._serial = response[24:]
+                    else:
+                        _LOGGER.error("Timeout error receiving SERIAL of projector. Is projector turned on?")        
+            except asyncio.TimeoutError:
+                _LOGGER.error("Timeout error receiving SERIAL of projector. Is projector turned on?")
+        return self._serial
+        

@@ -29,7 +29,6 @@ async def run(websession):
     projector = epson.Projector(
         host='HOSTNAME',
         websession=websession,
-        port=80,
         encryption=False)
     data = await projector.get_property(POWER)
     print(data)

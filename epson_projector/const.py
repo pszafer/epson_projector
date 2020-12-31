@@ -2,6 +2,12 @@
 
 HTTP_OK = 200
 
+TCP_PORT = 3629
+HTTP_PORT = 80
+EEMP0100 = '45454d5030313030'
+SERIAL_COMMAND='0000000002000000'
+SERIAL_BYTE = bytearray.fromhex(f'{EEMP0100}{SERIAL_COMMAND}')
+
 ACCEPT_ENCODING = "gzip, deflate"
 ACCEPT_HEADER = "application/json, text/javascript"
 

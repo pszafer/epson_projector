@@ -7,7 +7,7 @@ import async_timeout
 
 from .const import (ACCEPT_ENCODING, ACCEPT_HEADER, BUSY,
                     EPSON_KEY_COMMANDS, HTTP_OK, STATE_UNAVAILABLE)
-
+from .projector_tcp import ProjectorTcp
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -18,7 +18,7 @@ class ProjectorHttp:
     Control your projector with Python.
     """
 
-    def __init__(self, host, websession, port=80, encryption=False):
+    def __init__(self, host, websession, port=80, encryption=False, loop=None):
         """
         Epson Projector controller.
 
@@ -45,9 +45,18 @@ class ProjectorHttp:
             "Referer": referer
         }
         self.websession = websession
+        self._loop = loop
+        self._tcp_projector = None
 
     def close(self):
         return
+
+    async def get_serial_number(self, timeout):
+        if self._loop and self._host:
+            if not self._tcp_projector:
+                self._tcp_projector = ProjectorTcp(host=self._host, loop=self._loop)
+            test = await self._tcp_projector.get_property("EEMP0100À¨E", timeout)
+        return STATE_UNAVAILABLE
 
     async def get_property(self, command, timeout):
         """Get property state from device."""

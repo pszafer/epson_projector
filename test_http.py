@@ -4,7 +4,17 @@ from epson_projector.const import (POWER)
 
 import asyncio
 import aiohttp
+import logging
 
+_LOGGER = logging.getLogger(__name__)
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+_LOGGER.addHandler(console_handler)
+_LOGGER.setLevel(logging.DEBUG)
+
+logging.basicConfig(level=logging.DEBUG)
 
 async def main_web():
     """Run main with aiohttp ClientSession."""
@@ -19,8 +29,13 @@ async def run(websession):
         websession=websession,
         port=80,
         type='http',
+        loop=asyncio.get_event_loop(),
         encryption=False)
     data = await projector.get_property(POWER)
     print(data)
+    print("dupa")
+    await projector.get_serial_number()
+    # data = await projector.send_request("EEMP0100À¨E")
+    # print(data)
 
 asyncio.get_event_loop().run_until_complete(main_web())
