@@ -55,13 +55,14 @@ class Projector:
     async def get_serial_number(self):
         return await self._projector.get_serial()
 
-    async def get_property(self, command):
+    async def get_property(self, command, timeout=None):
         """Get property state from device."""
         _LOGGER.debug("Getting property %s", command)
+        timeout = timeout if timeout else get_timeout(command, self._timeout_scale)
         if self._lock.checkLock():
             return BUSY
         return await self._projector.get_property(command,
-                                                  get_timeout(command, self._timeout_scale))
+                                                  timeout)
 
     async def send_command(self, command):
         """Send command to Epson."""

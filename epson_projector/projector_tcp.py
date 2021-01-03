@@ -4,13 +4,23 @@ import logging
 import asyncio
 import async_timeout
 
-from .const import (BUSY, ESCVPNET_HELLO_COMMAND,
-                    ESCVPNETNAME, ERROR, CR, CR_COLON, GET_CR, EPSON_CODES, POWER, PWR_ON, SERIAL_BYTE)
+from .const import (
+    BUSY,
+    ESCVPNET_HELLO_COMMAND,
+    ESCVPNETNAME,
+    ERROR,
+    CR,
+    CR_COLON,
+    GET_CR,
+    EPSON_CODES,
+    POWER,
+    PWR_ON,
+    SERIAL_BYTE,
+    TCP_SERIAL_PORT,
+)
 from .timeout import get_timeout
 
 _LOGGER = logging.getLogger(__name__)
-
-
 
 
 class ProjectorTcp:
@@ -42,13 +52,11 @@ class ProjectorTcp:
         try:
             with async_timeout.timeout(10):
                 self._reader, self._writer = await asyncio.open_connection(
-                    host=self._host,
-                    port=self._port,
-                    loop=self._loop)
+                    host=self._host, port=self._port, loop=self._loop
+                )
                 self._writer.write(ESCVPNET_HELLO_COMMAND.encode())
                 response = await self._reader.read(16)
-                if (response[0:10].decode() == ESCVPNETNAME and
-                        response[14] == 32):
+                if response[0:10].decode() == ESCVPNETNAME and response[14] == 32:
                     self._isOpen = True
                     _LOGGER.info("Connection open")
                     returnvalue = True
@@ -69,22 +77,17 @@ class ProjectorTcp:
 
     async def get_property(self, command, timeout):
         """Get property state from device."""
-        response = await self.send_request(
-            timeout=timeout,
-            command=command+GET_CR
-            )
+        response = await self.send_request(timeout=timeout, command=command + GET_CR)
         if not response:
             return False
         try:
-            return response.split('=')[1]
+            return response.split("=")[1]
         except KeyError:
             return BUSY
 
     async def send_command(self, command, timeout):
         """Send command to Epson."""
-        response = await self.send_request(
-            timeout=timeout,
-            command=command+CR)
+        response = await self.send_request(timeout=timeout, command=command + CR)
         return response
 
     async def send_request(self, timeout, command):
@@ -94,13 +97,12 @@ class ProjectorTcp:
         if self._isOpen and command:
             with async_timeout.timeout(timeout):
                 self._writer.write(command.encode())
-                # self._writer.write('\r'.encode())
                 response = await self._reader.read(16)
                 response = response.decode().replace(CR_COLON, "")
                 if response == ERROR:
-                    _LOGGER.error("Error request")
                     return False
                 return response
+
     async def get_serial(self):
         """Send TCP request for serial to Epson."""
         if not self._serial:
@@ -109,13 +111,21 @@ class ProjectorTcp:
             try:
                 with async_timeout.timeout(10):
                     power_on = await self.get_property(POWER, get_timeout(POWER))
-                    if power_on != EPSON_CODES[POWER]:
-                        self._writer.write(SERIAL_BYTE)
-                        response = await self._reader.read(32)
-                        self._serial = response[24:]
+                    if power_on == EPSON_CODES[POWER]:
+                        reader, writer = await asyncio.open_connection(
+                            host=self._host, port=TCP_SERIAL_PORT, loop=self._loop
+                        )
+                        _LOGGER.debug("Asking for serial number.")
+                        writer.write(SERIAL_BYTE)
+                        response = await reader.read(32)
+                        self._serial = response[24:].decode()
+                        writer.close()
                     else:
-                        _LOGGER.error("Timeout error receiving SERIAL of projector. Is projector turned on?")        
+                        _LOGGER.error(
+                            "Is projector turned on?"
+                        )
             except asyncio.TimeoutError:
-                _LOGGER.error("Timeout error receiving SERIAL of projector. Is projector turned on?")
+                _LOGGER.error(
+                    "Timeout error receiving SERIAL of projector. Is projector turned on?"
+                )
         return self._serial
-        

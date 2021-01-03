@@ -1,6 +1,6 @@
 """Test and example of usage of Epson module."""
 import epson_projector as epson
-from epson_projector.const import (POWER)
+from epson_projector.const import (POWER, VOLUME)
 
 import asyncio
 import aiohttp
@@ -27,14 +27,12 @@ async def run(websession):
     projector = epson.Projector(
         host='192.168.11.37',
         websession=websession,
-        port=80,
         type='http',
         loop=asyncio.get_event_loop(),
         encryption=False)
     data = await projector.get_property(POWER)
     print(data)
     print("dupa")
-    await projector.get_serial_number()
     # data = await projector.send_request("EEMP0100À¨E")
     # print(data)
 

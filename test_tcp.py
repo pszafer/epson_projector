@@ -1,6 +1,6 @@
 import asyncio
 import epson_projector as epson
-from epson_projector.const import (POWER, PWR_OFF)
+from epson_projector.const import (POWER, PWR_OFF, VOLUME)
 
 
 async def main_tcp(loop):
@@ -14,7 +14,9 @@ async def run(loop):
                                 loop=loop)
     data = await projector.get_property(POWER)
     print(data)
-    print("PORT @")
+    # data2 = await projector.get_property(VOLUME)
+    # print(data2)
+    # print("VOL @", data2)
     dataa = await projector.get_serial_number()
     print("proj2", dataa)
     # await projector.send_command(PWR_OFF)
