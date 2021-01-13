@@ -22,7 +22,7 @@ async def run(loop):
     projector = epson.Projector(host='/dev/ttyUSB0',
                                 type='serial',
                                 loop=loop, timeout_scale=2.0)
-    data = await projector.get_property(POWER)
+    data = await projector.get_power()
     print(data)
     cmd = None
     if data == '01':

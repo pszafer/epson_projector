@@ -1,7 +1,7 @@
 """Main of Epson projector module."""
 import logging
 
-from .const import (BUSY, TCP_PORT, HTTP_PORT)
+from .const import (BUSY, TCP_PORT, HTTP_PORT, POWER)
 from .timeout import get_timeout
 
 from .lock import Lock
@@ -31,6 +31,7 @@ class Projector:
         self._lock = Lock()
         self._type = type
         self._timeout_scale = timeout_scale
+        self._power = None
         if self._type == 'http':
             self._host = host
             from .projector_http import ProjectorHttp
@@ -55,14 +56,24 @@ class Projector:
     async def get_serial_number(self):
         return await self._projector.get_serial()
 
-    async def get_property(self, command, timeout=None):
+    async def get_power(self):
+        """Get Power info."""
+        _LOGGER.debug("Getting POWER info")
+        power = await self.get_property(command=POWER, bytes_to_read=98)
+        if power:
+            self._power = power
+        return self._power
+
+
+    async def get_property(self, command, timeout=None, bytes_to_read=None):
         """Get property state from device."""
         _LOGGER.debug("Getting property %s", command)
         timeout = timeout if timeout else get_timeout(command, self._timeout_scale)
         if self._lock.checkLock():
             return BUSY
-        return await self._projector.get_property(command,
-                                                  timeout)
+        return await self._projector.get_property(command=command,
+                                                  timeout=timeout,
+                                                  bytes_to_read=bytes_to_read)
 
     async def send_command(self, command):
         """Send command to Epson."""

@@ -12,7 +12,7 @@ async def run(loop):
     projector = epson.Projector(host='192.168.11.37',
                                 type='tcp',
                                 loop=loop)
-    data = await projector.get_property(POWER)
+    data = await projector.get_power()
     print(data)
     # data2 = await projector.get_property(VOLUME)
     # print(data2)
