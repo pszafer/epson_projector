@@ -14,7 +14,6 @@ from .const import (
     GET_CR,
     EPSON_CODES,
     POWER,
-    PWR_ON,
     SERIAL_BYTE,
     TCP_SERIAL_PORT,
 )
@@ -58,7 +57,7 @@ class ProjectorTcp:
                 if response[0:10].decode() == ESCVPNETNAME and response[14] == 32:
                     self._isOpen = True
                     _LOGGER.info("Connection open")
-                    return;
+                    return
                 else:
                     _LOGGER.info("Cannot open connection to Epson")
         except asyncio.TimeoutError:
@@ -74,16 +73,18 @@ class ProjectorTcp:
 
     async def get_property(self, command, timeout, bytes_to_read=16):
         """Get property state from device."""
-        response = await self.send_request(timeout=timeout, command=command + GET_CR, bytes_to_read=bytes_to_read)
+        response = await self.send_request(
+            timeout=timeout, command=command + GET_CR, bytes_to_read=bytes_to_read
+        )
         _LOGGER.debug("Response is %s", response)
         if not response:
             return False
         try:
-            resp_beginning=f'{command}='
-            index_of_response=response.find(resp_beginning)
+            resp_beginning = f"{command}="
+            index_of_response = response.find(resp_beginning)
             if index_of_response == -1:
                 return False
-            return response[index_of_response:].replace(resp_beginning,'')
+            return response[index_of_response:].replace(resp_beginning, "")
         except KeyError:
             return BUSY
 
@@ -122,9 +123,7 @@ class ProjectorTcp:
                         self._serial = response[24:].decode()
                         writer.close()
                     else:
-                        _LOGGER.error(
-                            "Is projector turned on?"
-                        )
+                        _LOGGER.error("Is projector turned on?")
             except asyncio.TimeoutError:
                 _LOGGER.error(
                     "Timeout error receiving SERIAL of projector. Is projector turned on?"
