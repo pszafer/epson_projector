@@ -66,20 +66,18 @@ class Projector:
     async def get_power(self):
         """Get Power info."""
         _LOGGER.debug("Getting POWER info")
-        power = await self.get_property(command=POWER, bytes_to_read=98)
+        power = await self.get_property(command=POWER)
         if power:
             self._power = power
         return self._power
 
-    async def get_property(self, command, timeout=None, bytes_to_read=None):
+    async def get_property(self, command, timeout=None):
         """Get property state from device."""
         _LOGGER.debug("Getting property %s", command)
         timeout = timeout if timeout else get_timeout(command, self._timeout_scale)
         if self._lock.checkLock():
             return BUSY
-        return await self._projector.get_property(
-            command=command, timeout=timeout, bytes_to_read=bytes_to_read
-        )
+        return await self._projector.get_property(command=command, timeout=timeout)
 
     async def send_command(self, command):
         """Send command to Epson."""
