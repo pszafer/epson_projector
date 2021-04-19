@@ -47,6 +47,7 @@ class ProjectorHttp:
             "Accept": ACCEPT_HEADER,
             "Referer": f"http://{self._host}:{port}/cgi-bin/webconf",
         }
+        self._serial = None
         self.websession = websession
         self._loop = loop
 

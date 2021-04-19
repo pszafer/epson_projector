@@ -41,7 +41,9 @@ class Projector:
             self._host = host
             from .projector_http import ProjectorHttp
 
-            self._projector = ProjectorHttp(host, websession, HTTP_PORT, loop)
+            self._projector = ProjectorHttp(
+                host=host, websession=websession, port=HTTP_PORT, loop=loop
+            )
         elif self._type == TCP:
             from .projector_tcp import ProjectorTcp
 
