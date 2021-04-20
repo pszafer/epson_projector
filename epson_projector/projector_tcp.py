@@ -27,7 +27,7 @@ class ProjectorTcp:
     Epson TCP connector
     """
 
-    def __init__(self, host, port=3629, loop=None):
+    def __init__(self, host, port=3629):
         """
         Epson TCP connector
 
@@ -40,10 +40,7 @@ class ProjectorTcp:
         self._port = port
         self._isOpen = False
         self._serial = None
-        if loop is None:
-            self._loop = asyncio.get_event_loop()
-        else:
-            self._loop = loop
+        self._loop = asyncio.get_running_loop()
 
     async def async_init(self):
         """Async init to open connection with projector."""

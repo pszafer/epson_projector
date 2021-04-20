@@ -31,7 +31,7 @@ class ProjectorHttp:
     Control your projector with Python.
     """
 
-    def __init__(self, host, websession, loop, port=80):
+    def __init__(self, host, websession, port=80):
         """
         Epson Projector controller.
 
@@ -49,7 +49,6 @@ class ProjectorHttp:
         }
         self._serial = None
         self.websession = websession
-        self._loop = loop
 
     def close(self):
         return
@@ -106,7 +105,9 @@ class ProjectorHttp:
                     power_on = await self.get_property(POWER, get_timeout(POWER))
                     if power_on == EPSON_CODES[POWER]:
                         reader, writer = await asyncio.open_connection(
-                            host=self._host, port=TCP_SERIAL_PORT, loop=self._loop
+                            host=self._host,
+                            port=TCP_SERIAL_PORT,
+                            loop=asyncio.get_running_loop(),
                         )
                         _LOGGER.debug("Asking for serial number.")
                         writer.write(SERIAL_BYTE)

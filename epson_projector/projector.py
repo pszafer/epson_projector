@@ -19,7 +19,6 @@ class Projector:
     def __init__(
         self,
         host,
-        loop,
         websession=None,
         type=HTTP,
         timeout_scale=1.0,
@@ -28,7 +27,6 @@ class Projector:
         Epson Projector controller.
 
         :param str host:        Hostname/IP/serial to the projector
-        :param obj loop:        Asyncio loop to pass for TCP/serial connection
         :param obj websession:  Websession to pass for HTTP protocol
         :param timeout_scale    Factor to multiply default timeouts by (for slow projectors)
 
@@ -42,18 +40,18 @@ class Projector:
             from .projector_http import ProjectorHttp
 
             self._projector = ProjectorHttp(
-                host=host, websession=websession, port=HTTP_PORT, loop=loop
+                host=host, websession=websession, port=HTTP_PORT
             )
         elif self._type == TCP:
             from .projector_tcp import ProjectorTcp
 
             self._host = host
-            self._projector = ProjectorTcp(host, TCP_PORT, loop)
+            self._projector = ProjectorTcp(host, TCP_PORT)
         elif self._type == SERIAL:
             from .projector_serial import ProjectorSerial
 
             self._host = host
-            self._projector = ProjectorSerial(host, loop)
+            self._projector = ProjectorSerial(host)
 
     def close(self):
         """Close connection. Not used in HTTP"""
