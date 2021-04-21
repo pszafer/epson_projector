@@ -33,8 +33,6 @@ class ProjectorTcp:
 
         :param str host:    IP address of Projector
         :param int port:    Port to connect to. Default 3629.
-        :param obj loop:    Pass asyncio loop to connector
-
         """
         self._host = host
         self._port = port

@@ -22,8 +22,6 @@ class ProjectorSerial:
         Epson Serial connector
 
         :param str host:    Device to connect to.
-        :param obj loop:    Pass asyncio loop to connector
-
         """
         self._host = host
         self._reader = None
