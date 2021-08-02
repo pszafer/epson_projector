@@ -3,15 +3,14 @@ import epson_projector as epson
 from epson_projector.const import (POWER, PWR_OFF, VOLUME)
 
 
-async def main_tcp(loop):
+async def main_tcp():
     """Run main with TCP session."""
-    await run(loop)
+    await run()
 
 
-async def run(loop):
+async def run():
     projector = epson.Projector(host='192.168.11.37',
-                                type='tcp',
-                                loop=loop)
+                                type='tcp')
     data = await projector.get_power()
     print(data)
     # data2 = await projector.get_property(VOLUME)
@@ -23,5 +22,5 @@ async def run(loop):
     # projector.close()
 
 loop = asyncio.get_event_loop()
-loop.run_until_complete(main_tcp(loop))
+loop.run_until_complete(main_tcp())
 loop.close()
