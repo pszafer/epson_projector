@@ -91,7 +91,7 @@ class ProjectorSerial:
         if self._writer and not self._writer.is_closing() and command:
             try:
                 with async_timeout.timeout(timeout):
-                    _LOGGER.debug("Sent to Epson: %r", command.encode())
+                    _LOGGER.debug("Sent to Epson: %r with timeout %d", command.encode(), timeout)
                     self._writer.write(command.encode())
                     response = await self._reader.readuntil(COLON.encode())
                     response = response[:-1].decode().rstrip(CR)
