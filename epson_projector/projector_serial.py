@@ -57,7 +57,7 @@ class ProjectorSerial:
                         _LOGGER.info("Connection open")
                         return True
                     else:
-                        _LOGGER.info(
+                        _LOGGER.warn(
                             "Connection established, " "but wrong response %r.",
                             response,
                         )
@@ -69,7 +69,7 @@ class ProjectorSerial:
         return self.closed_connection_info()
 
     def closed_connection_info(self):
-        _LOGGER.info("Cannot open serial to Epson")
+        _LOGGER.error("Cannot open serial to Epson")
         return False
 
     def close(self):
@@ -111,17 +111,17 @@ class ProjectorSerial:
         if self._writer and self._isOpen and command:
             try:
                 with async_timeout.timeout(timeout):
-                    _LOGGER.debug("Sent to Epson: %r with timeout %d", command.encode(), timeout)
+                    _LOGGER.debug("Sent to Epson: %r with timeout %d", command, timeout)
                     self._writer.write(command.encode())
                     response = await self._reader.readuntil(COLON.encode())
                     response = response[:-1].decode().rstrip(CR)
-                    _LOGGER.info("Response from Epson %r", response)
+                    _LOGGER.debug("Response from Epson %r", response)
                     if response == ERROR:
-                        _LOGGER.error("Error request")
+                        _LOGGER.error("Error response to request %r", command)
                     else:
                         return response
             except asyncio.TimeoutError:
-                _LOGGER.error("Timeout error during sending request")
+                _LOGGER.error("Timeout error during sending request %r", command)
                 self._timeouts += 1
                 self._check_timeout_reconnect()
             except SerialException as se:
