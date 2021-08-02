@@ -4,7 +4,7 @@ import logging
 import asyncio
 import serial_asyncio
 from serial.serialutil import SerialException
-from .const import ESCVP_HELLO_COMMAND, COLON, CR, GET_CR, BUSY, ERROR
+from .const import ESCVP_HELLO_COMMAND, COLON, CR, GET_CR, BUSY, ERROR, SNO
 import async_timeout
 
 _LOGGER = logging.getLogger(__name__)
@@ -28,6 +28,7 @@ class ProjectorSerial:
         self._writer = None
         self._isOpen = False
         self._loop = asyncio.get_running_loop()
+        self._serial = None
 
     async def async_init(self):
         """Async init to open serial connection with projector."""
@@ -101,3 +102,13 @@ class ProjectorSerial:
             except asyncio.TimeoutError:
                 _LOGGER.error("Timeout error during sending request")
         return False
+
+    async def get_serial(self):
+        """Send request for serial to Epson."""
+        if not self._serial:
+            response = await self.get_property(SNO, timeout=DEFAULT_TIMEOUT)
+            if not response or response == BUSY:
+                _LOGGER.error("Error retrieving serial number from projector")
+            else:
+                self._serial = response
+        return self._serial

@@ -32,6 +32,9 @@ async def run():
     if cmd:
         data2 = await projector.send_command(cmd)
         print(data2)
+
+    serialno = await projector.get_serial_number()
+    print("Projector serial number:", serialno)
     projector.close()
 
 loop = asyncio.get_event_loop()
