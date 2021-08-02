@@ -54,8 +54,8 @@ class ProjectorSerial:
                         )
         except asyncio.TimeoutError:
             _LOGGER.error("Timeout error during connection")
-        except SerialException:
-            _LOGGER.error("Device not found")
+        except SerialException as se:
+            _LOGGER.error(f"Problem opening serial connection: {se}")
         return self.closed_connection_info()
 
     def closed_connection_info(self):
@@ -91,6 +91,7 @@ class ProjectorSerial:
         if self._writer and not self._writer.is_closing() and command:
             try:
                 with async_timeout.timeout(timeout):
+                    _LOGGER.debug("Sent to Epson: %r", command.encode())
                     self._writer.write(command.encode())
                     response = await self._reader.readuntil(COLON.encode())
                     response = response[:-1].decode().rstrip(CR)
