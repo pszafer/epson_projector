@@ -4,12 +4,13 @@ import logging
 import asyncio
 import serial_asyncio
 from serial.serialutil import SerialException
-from .const import ESCVP_HELLO_COMMAND, COLON, CR, GET_CR, BUSY, ERROR
+from .const import ESCVP_HELLO_COMMAND, COLON, CR, GET_CR, BUSY, ERROR, SNO
 import async_timeout
 
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT = 10
+MAX_TIMEOUTS = 3
 
 
 class ProjectorSerial:
@@ -26,11 +27,20 @@ class ProjectorSerial:
         self._host = host
         self._reader = None
         self._writer = None
+        self._timeouts = 0
         self._isOpen = False
         self._loop = asyncio.get_running_loop()
+        self._serial = None
 
     async def async_init(self):
         """Async init to open serial connection with projector."""
+
+        _LOGGER.debug("Establishing serial connection")
+        if self._writer and self._writer.is_closing():
+            try:
+                await self._writer.wait_closed()
+            except:
+                pass
         try:
             with async_timeout.timeout(DEFAULT_TIMEOUT):
                 (
@@ -47,22 +57,31 @@ class ProjectorSerial:
                         _LOGGER.info("Connection open")
                         return True
                     else:
-                        _LOGGER.info(
+                        _LOGGER.warn(
                             "Connection established, " "but wrong response %r.",
                             response,
                         )
         except asyncio.TimeoutError:
             _LOGGER.error("Timeout error during connection")
-        except SerialException:
-            _LOGGER.error("Device not found")
+        except SerialException as se:
+            _LOGGER.error(f"Problem opening serial connection: {se}")
+            self._isOpen = False
         return self.closed_connection_info()
 
     def closed_connection_info(self):
-        _LOGGER.info("Cannot open serial to Epson")
+        _LOGGER.error("Cannot open serial to Epson")
         return False
 
     def close(self):
         if self._writer and not self._writer.is_closing():
+            _LOGGER.debug("Closing serial connection")
+            self._writer.close()
+            self._writer = None
+            self._isOpen = False
+            self._timeouts = 0
+
+    def _check_timeout_reconnect(self):
+        if self._timeouts >= MAX_TIMEOUTS:
             self._writer.close()
 
     async def get_property(self, command, timeout):
@@ -85,19 +104,38 @@ class ProjectorSerial:
 
     async def send_request(self, timeout, command):
         """Send request to Epson over serial."""
-        if self._writer is None:
+        if self._writer and not self._isOpen:
+            self._writer.close()
+        if self._writer is None or self._writer.is_closing():
             await self.async_init()
-        if self._writer and not self._writer.is_closing() and command:
+        if self._writer and self._isOpen and command:
             try:
                 with async_timeout.timeout(timeout):
+                    _LOGGER.debug("Sent to Epson: %r with timeout %d", command, timeout)
                     self._writer.write(command.encode())
                     response = await self._reader.readuntil(COLON.encode())
                     response = response[:-1].decode().rstrip(CR)
-                    _LOGGER.info("Response from Epson %r", response)
+                    _LOGGER.debug("Response from Epson %r", response)
                     if response == ERROR:
-                        _LOGGER.error("Error request")
+                        _LOGGER.error("Error response to request %r", command)
                     else:
                         return response
             except asyncio.TimeoutError:
-                _LOGGER.error("Timeout error during sending request")
+                _LOGGER.error("Timeout error during sending request %r", command)
+                self._timeouts += 1
+                self._check_timeout_reconnect()
+            except SerialException as se:
+                _LOGGER.error(f"Error during serial write/read: {se}")
+                self.close()
+
         return False
+
+    async def get_serial(self):
+        """Send request for serial to Epson."""
+        if not self._serial:
+            response = await self.get_property(SNO, timeout=DEFAULT_TIMEOUT)
+            if not response or response == BUSY:
+                _LOGGER.error("Error retrieving serial number from projector")
+            else:
+                self._serial = response
+        return self._serial

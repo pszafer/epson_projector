@@ -13,15 +13,15 @@ _LOGGER.setLevel(logging.DEBUG)
 
 logging.basicConfig(level=logging.DEBUG)
 
-async def main_serial(loop):
+async def main_serial():
     """Run main with serial connection."""
-    await run(loop)
+    await run()
 
 
-async def run(loop):
+async def run():
     projector = epson.Projector(host='/dev/ttyUSB0',
                                 type='serial',
-                                loop=loop, timeout_scale=2.0)
+                                timeout_scale=2.0)
     data = await projector.get_power()
     print(data)
     cmd = None
@@ -32,8 +32,11 @@ async def run(loop):
     if cmd:
         data2 = await projector.send_command(cmd)
         print(data2)
+
+    serialno = await projector.get_serial_number()
+    print("Projector serial number:", serialno)
     projector.close()
 
 loop = asyncio.get_event_loop()
-loop.run_until_complete(main_serial(loop))
+loop.run_until_complete(main_serial())
 loop.close()
