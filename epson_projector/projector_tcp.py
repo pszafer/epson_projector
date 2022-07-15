@@ -79,7 +79,10 @@ class ProjectorTcp:
             index_of_response = response.find(resp_beginning)
             if index_of_response == -1:
                 return False
-            return response[index_of_response:].replace(resp_beginning, "")
+            _response = response[index_of_response:].replace(resp_beginning, "")
+            if _response == ERROR:
+                return False
+            return _response
         except KeyError:
             return BUSY
 

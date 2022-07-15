@@ -1,6 +1,6 @@
 """Test and example of usage of Epson module."""
 import epson_projector as epson
-from epson_projector.const import POWER, VOLUME
+from epson_projector.const import POWER, VOLUME, PWR_ON
 
 import asyncio
 import aiohttp
@@ -27,13 +27,13 @@ async def main_web():
 async def run(websession):
     """Use Projector class of epson module and check if it is turned on."""
     projector = epson.Projector(
-        host="192.168.11.37",
+        host="192.168.11.45",
         websession=websession,
-        type="http",
-        loop=asyncio.get_event_loop(),
+        type="http"
     )
     data = await projector.get_property(POWER)
     print(data)
+#    await projector.send_command(PWR_ON)
     # data = await projector.send_request("EEMP0100À¨E")
     # print(data)
 
