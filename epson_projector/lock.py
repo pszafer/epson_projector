@@ -1,7 +1,7 @@
 """Lock to prevent sending multiple command at once to Epson projector."""
 
 import time
-from .const import (TURN_ON, TURN_OFF, INV_SOURCES, SOURCE, ALL, TIMEOUT_TIMES)
+from .const import (TURN_ON, TURN_OFF, INV_SOURCES, SOURCE, ALL, TIMEOUT_TIMES, DEFAULT_TIMEOUT_TIME)
 
 
 class Lock:
@@ -36,7 +36,7 @@ class Lock:
         passed so requests can be unlocked.
         """
         if self._isLocked:
-            if (time.time() - self._timer) > TIMEOUT_TIMES[self._operation]:
+            if (time.time() - self._timer) > TIMEOUT_TIMES.get(self._operation, DEFAULT_TIMEOUT_TIME):
                 self.__unlock()
                 return False
             return True
