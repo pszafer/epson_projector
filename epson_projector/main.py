@@ -5,7 +5,7 @@ import time
 import aiohttp
 import async_timeout
 
-from .const import (ACCEPT_ENCODING, ACCEPT_HEADER, ALL, BUSY,
+from .const import (ACCEPT_ENCODING, ACCEPT_HEADER, ALL, DEFAULT_TIMEOUT_TIME, BUSY,
                     EPSON_KEY_COMMANDS, HTTP_OK, INV_SOURCES, SOURCE,
                     TIMEOUT_TIMES, TURN_OFF, TURN_ON)
 
@@ -144,4 +144,4 @@ class Projector:
         if command in TIMEOUT_TIMES:
             return TIMEOUT_TIMES[command]
         else:
-            return TIMEOUT_TIMES['ALL']
+            return DEFAULT_TIMEOUT_TIME
