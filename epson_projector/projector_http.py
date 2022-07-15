@@ -107,7 +107,6 @@ class ProjectorHttp:
                         reader, writer = await asyncio.open_connection(
                             host=self._host,
                             port=TCP_SERIAL_PORT,
-                            loop=asyncio.get_running_loop(),
                         )
                         _LOGGER.debug("Asking for serial number.")
                         writer.write(SERIAL_BYTE)
