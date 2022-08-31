@@ -19,6 +19,7 @@ from .const import (
     SERIAL_BYTE,
     JSON_QUERY,
 )
+from .error import ProjectorUnavailableError
 from .timeout import get_timeout
 
 _LOGGER = logging.getLogger(__name__)
@@ -94,8 +95,7 @@ class ProjectorHttp:
             TimeoutError,
             asyncio.exceptions.TimeoutError,
         ):
-            _LOGGER.error("Error request")
-            return STATE_UNAVAILABLE
+            raise ProjectorUnavailableError(STATE_UNAVAILABLE)
 
     async def get_serial(self):
         """Send TCP request for serial to Epson."""
