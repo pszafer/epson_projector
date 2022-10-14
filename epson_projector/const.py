@@ -118,6 +118,16 @@ EPSON_KEY_COMMANDS = {
     "MEMORY_8": [("POPMEM", "02 08")],
     "MEMORY_9": [("POPMEM", "02 09")],
     "MEMORY_10": [("POPMEM", "02 0A")],
+    "LENSMEMORY_1": [("POPLP", "01")],
+    "LENSMEMORY_2": [("POPLP", "02")],
+    "LENSMEMORY_3": [("POPLP", "03")],
+    "LENSMEMORY_4": [("POPLP", "04")],
+    "LENSMEMORY_5": [("POPLP", "05")],
+    "LENSMEMORY_6": [("POPLP", "06")],
+    "LENSMEMORY_7": [("POPLP", "07")],
+    "LENSMEMORY_8": [("POPLP", "08")],
+    "LENSMEMORY_9": [("POPLP", "09")],
+    "LENSMEMORY_10": [("POPLP", "0A")],
 }
 
 DEFAULT_TIMEOUT_TIME = 3
