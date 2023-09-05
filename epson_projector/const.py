@@ -59,6 +59,7 @@ MEMORY_9 = "MEMORY_9"
 MEMORY_10 = "MEMORY_10"
 SNO = "SNO"
 BUSY = 2
+BUSY_CODES = [2, "2", "02"]
 
 EPSON_CODES = {"PWR": "01"}
 
