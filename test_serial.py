@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import asyncio
 import epson_projector as epson
 from epson_projector.const import (POWER, PWR_ON, PWR_OFF)
@@ -37,6 +39,4 @@ async def run():
     print("Projector serial number:", serialno)
     projector.close()
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main_serial())
-loop.close()
+asyncio.run(main_serial())

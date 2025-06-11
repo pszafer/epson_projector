@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import asyncio
 import epson_projector as epson
 from epson_projector.const import (POWER, PWR_OFF, VOLUME)
@@ -21,6 +23,4 @@ async def run():
     # await projector.send_command(PWR_OFF)
     # projector.close()
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main_tcp())
-loop.close()
+asyncio.run(main_tcp())
