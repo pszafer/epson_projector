@@ -5,7 +5,6 @@ import asyncio
 import serial_asyncio
 from serial.serialutil import SerialException
 from .const import ESCVP_HELLO_COMMAND, COLON, CR, GET_CR, BUSY, ERROR, SNO
-import async_timeout
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,7 +41,7 @@ class ProjectorSerial:
             except:
                 pass
         try:
-            async with async_timeout.timeout(DEFAULT_TIMEOUT):
+            async with asyncio.timeout(DEFAULT_TIMEOUT):
                 (
                     self._reader,
                     self._writer,
@@ -110,7 +109,7 @@ class ProjectorSerial:
             await self.async_init()
         if self._writer and self._isOpen and command:
             try:
-                async with async_timeout.timeout(timeout):
+                async with asyncio.timeout(timeout):
                     _LOGGER.debug("Sent to Epson: %r with timeout %d", command, timeout)
                     self._writer.write(command.encode())
                     response = await self._reader.readuntil(COLON.encode())

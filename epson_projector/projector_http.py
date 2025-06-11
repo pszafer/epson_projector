@@ -3,7 +3,6 @@ import logging
 
 import aiohttp
 import asyncio
-import async_timeout
 
 from .const import (
     ACCEPT_ENCODING,
@@ -78,7 +77,7 @@ class ProjectorHttp:
     async def send_request(self, params, timeout, type=JSON_QUERY):
         """Send request to Epson."""
         try:
-            async with async_timeout.timeout(timeout):
+            async with asyncio.timeout(timeout):
                 url = "{url}{type}".format(url=self._http_url, type=type)
                 async with self.websession.get(
                     url=url, params=params, headers=self._headers
@@ -101,7 +100,7 @@ class ProjectorHttp:
         """Send TCP request for serial to Epson."""
         if not self._serial:
             try:
-                async with async_timeout.timeout(10):
+                async with asyncio.timeout(10):
                     power_on = await self.get_property(POWER, get_timeout(POWER))
                     if power_on == EPSON_CODES[POWER]:
                         reader, writer = await asyncio.open_connection(

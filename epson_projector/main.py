@@ -1,9 +1,9 @@
 """Main of Epson projector module."""
+import asyncio
 import logging
 import time
 
 import aiohttp
-import async_timeout
 
 from .const import (ACCEPT_ENCODING, ACCEPT_HEADER, ALL, DEFAULT_TIMEOUT_TIME, BUSY,
                     EPSON_KEY_COMMANDS, HTTP_OK, INV_SOURCES, SOURCE,
@@ -120,7 +120,7 @@ class Projector:
                            type='json_query', command=False):
         """Send request to Epson."""
         try:
-            async with async_timeout.timeout(timeout):
+            async with asyncio.timeout(timeout):
                 url = '{url}{type}'.format(
                     url=self._http_url,
                     type=type)
