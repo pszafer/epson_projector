@@ -18,7 +18,7 @@ async def main_tcp(args):
     dataa = await projector.get_serial_number()
     print("proj2", dataa)
     # await projector.send_command(PWR_OFF)
-    # projector.close()
+    projector.close()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(  # noqa: F821
