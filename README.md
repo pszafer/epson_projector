@@ -1,13 +1,14 @@
 # Epson-projector module
-## Asynchronous library to control epson projectors
 
-Requires Python 3.5. asyncio, aiohttp.
+## Asynchronous library to control Epson projectors
+
+Requires Python 3.11 or higher.
 
 Created mostly to use with Home Assistant.
 
 ### Usage
 
-Check out test.py and const.py to see all posibilities to send to projector.
+Check out the test_*.py files and const.py to see all posibilities to send to projector.
 
 ```python
 """Test and example of usage of Epson module."""
@@ -33,5 +34,5 @@ async def run(websession):
     data = await projector.get_property(POWER)
     print(data)
 
-asyncio.get_event_loop().run_until_complete(main())
+asyncio.run(main())
 ```

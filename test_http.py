@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Test and example of usage of Epson module."""
 import epson_projector as epson
 from epson_projector.const import POWER, VOLUME, PWR_ON
@@ -38,4 +40,4 @@ async def run(websession):
     # print(data)
 
 
-asyncio.get_event_loop().run_until_complete(main_web())
+asyncio.run(main_web())
