@@ -2,7 +2,7 @@
 import logging
 
 import asyncio
-import serial_asyncio
+import serial_asyncio_fast
 from serial.serialutil import SerialException
 from .const import ESCVP_HELLO_COMMAND, COLON, CR, GET_CR, BUSY, ERROR, SNO
 
@@ -45,7 +45,7 @@ class ProjectorSerial:
                 (
                     self._reader,
                     self._writer,
-                ) = await serial_asyncio.open_serial_connection(
+                ) = await serial_asyncio_fast.open_serial_connection(
                     url=self._host, baudrate=9600, loop=self._loop
                 )
                 if self._reader and self._writer:

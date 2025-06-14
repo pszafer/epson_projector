@@ -1,2 +1,2 @@
 aiohttp>=3.3.0
-pyserial_asyncio>=0.4
+pyserial-asyncio-fast>=0.16
