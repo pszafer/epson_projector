@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import asyncio
 import epson_projector as epson
 from epson_projector.const import (POWER, PWR_ON, PWR_OFF)
@@ -15,13 +16,9 @@ _LOGGER.setLevel(logging.DEBUG)
 
 logging.basicConfig(level=logging.DEBUG)
 
-async def main_serial():
+async def main_serial(args):
     """Run main with serial connection."""
-    await run()
-
-
-async def run():
-    projector = epson.Projector(host='/dev/ttyUSB0',
+    projector = epson.Projector(host=args.serial_url,
                                 type='serial',
                                 timeout_scale=2.0)
     data = await projector.get_power()
@@ -39,4 +36,16 @@ async def run():
     print("Projector serial number:", serialno)
     projector.close()
 
-asyncio.run(main_serial())
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Example/test application for Epson Projector package through serial connection."
+    )
+
+    parser.add_argument(
+        "serial_url",
+        help="Can be a devicename like /dev/ttyUSB0 or COM3 for real serial port or use socket://<ip-or-host>:<port> for connections to tcp-to-serial solutions.",
+    )
+    args = parser.parse_args()
+
+    asyncio.run(main_serial(args))
