@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 """Test and example of usage of Epson module."""
+import argparse
 import epson_projector as epson
 from epson_projector.const import POWER, VOLUME, PWR_ON
 
@@ -20,24 +21,31 @@ _LOGGER.setLevel(logging.DEBUG)
 logging.basicConfig(level=logging.DEBUG)
 
 
-async def main_web():
+async def main_web(args):
     """Run main with aiohttp ClientSession."""
-    async with aiohttp.ClientSession() as session:
-        await run(session)
+    async with aiohttp.ClientSession() as websession:
+        """Use Projector class of epson module and check if it is turned on."""
+        projector = epson.Projector(
+            host=args.host,
+            websession=websession,
+            type="http"
+        )
+        data = await projector.get_property(POWER)
+        print(data)
+    #    await projector.send_command(PWR_ON)
+        # data = await projector.send_request("EEMP0100À¨E")
+        # print(data)
 
 
-async def run(websession):
-    """Use Projector class of epson module and check if it is turned on."""
-    projector = epson.Projector(
-        host="192.168.11.45",
-        websession=websession,
-        type="http"
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Example/test application for Epson Projector package through http connection."
     )
-    data = await projector.get_property(POWER)
-    print(data)
-#    await projector.send_command(PWR_ON)
-    # data = await projector.send_request("EEMP0100À¨E")
-    # print(data)
 
+    parser.add_argument(
+        "host",
+        help="Hostname or IP address of the projector.",
+    )
+    args = parser.parse_args()
 
-asyncio.run(main_web())
+    asyncio.run(main_web(args))
