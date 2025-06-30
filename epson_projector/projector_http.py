@@ -37,9 +37,8 @@ class ProjectorHttp(BaseProjectorConnection):
         Epson Projector controller.
 
         :param str host:        IP address or hostname of Projector
+        :param obj websession:  AioHttpWebsession for HTTP protocol
         :param int port:        Port to connect to. Default 80.
-        :param bool encryption: User encryption to connect
-
         """
         self._host = host
         self._http_url = f"http://{self._host}:{port}/cgi-bin/"
