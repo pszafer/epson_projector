@@ -1,5 +1,7 @@
 # Protocol
 
+This document is intended to give a short overview/quickstart about the protocols supported.
+
 ## ESC/VP21
 
 The commands that this library uses to control the projector are part of ESC/VP21 command set.
@@ -18,7 +20,7 @@ This connection method is implemented in `protocol_http.py`
 Commands are sent by doing an HTTP `GET` on `/cgi-bin/<type>`. Where type can be "directsend" or "json_query".
 The type "directsend" seems to be sending of plain ESC/VP21 commands. The type "json_query" results in a JSON reponse.
 
-The serial number of the projector seems to be obtained through another connection.
+The serial number of the projector seems to be obtained through the same way as done with `projector_tcp.py`.
 
 ### ESC/VP.net
 
