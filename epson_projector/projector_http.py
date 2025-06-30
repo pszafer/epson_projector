@@ -96,8 +96,8 @@ class ProjectorHttp(BaseProjectorConnection):
         ):
             raise ProjectorUnavailableError(STATE_UNAVAILABLE)
 
-    async def get_serial(self):
-        """Send TCP request for serial to Epson."""
+    async def get_serial_number(self):
+        """Send TCP request for serial number to Epson."""
         if not self._serial:
             try:
                 async with asyncio.timeout(10):

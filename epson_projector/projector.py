@@ -64,7 +64,7 @@ class Projector:
 
     async def get_serial_number(self):
         """Get serial number from device."""
-        return await self._projector.get_serial()
+        return await self._projector.get_serial_number()
 
     async def get_power(self):
         """Get Power info."""

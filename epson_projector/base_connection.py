@@ -22,7 +22,7 @@ class BaseProjectorConnection(abc.ABC):
         pass
 
     @abc.abstractmethod
-    async def get_serial(self):
+    async def get_serial_number(self):
         """Get serial number from device."""
         pass
 

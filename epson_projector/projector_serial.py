@@ -130,8 +130,8 @@ class ProjectorSerial(BaseProjectorConnection):
 
         return False
 
-    async def get_serial(self):
-        """Send request for serial to Epson."""
+    async def get_serial_number(self):
+        """Send request for serial number to Epson."""
         if not self._serial:
             response = await self.get_property(SNO, timeout=DEFAULT_TIMEOUT)
             if not response or response == BUSY:
