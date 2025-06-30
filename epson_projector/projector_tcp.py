@@ -3,6 +3,7 @@ import logging
 
 import asyncio
 
+from .base_connection import BaseProjectorConnection
 from .const import (
     BUSY,
     ESCVPNET_HELLO_COMMAND,
@@ -21,7 +22,7 @@ from .timeout import get_timeout
 _LOGGER = logging.getLogger(__name__)
 
 
-class ProjectorTcp:
+class ProjectorTcp(BaseProjectorConnection):
     """
     Epson TCP connector
     """

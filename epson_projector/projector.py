@@ -1,6 +1,7 @@
 """Main of Epson projector module."""
 import logging
 
+from .base_connection import BaseProjectorConnection
 from .const import BUSY, TCP_PORT, HTTP_PORT, POWER, HTTP, TCP, SERIAL
 from .timeout import get_timeout
 
@@ -35,6 +36,7 @@ class Projector:
         self._type = type
         self._timeout_scale = timeout_scale
         self._power = None
+        self._projector:BaseProjectorConnection
         if self._type == HTTP:
             self._host = host
             from .projector_http import ProjectorHttp
@@ -52,6 +54,10 @@ class Projector:
 
             self._host = host
             self._projector = ProjectorSerial(host)
+        else:
+            raise ValueError(
+                f"Invalid type {self._type}. Use 'http', 'tcp' or 'serial'."
+            )
 
     def close(self):
         """Close connection. Not used in HTTP"""

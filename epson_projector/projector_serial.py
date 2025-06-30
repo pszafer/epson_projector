@@ -5,6 +5,7 @@ import asyncio
 import serial_asyncio_fast
 from serial.serialutil import SerialException
 from .const import ESCVP_HELLO_COMMAND, COLON, CR, GET_CR, BUSY, ERROR, SNO
+from .base_connection import BaseProjectorConnection
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -12,7 +13,7 @@ DEFAULT_TIMEOUT = 10
 MAX_TIMEOUTS = 3
 
 
-class ProjectorSerial:
+class ProjectorSerial(BaseProjectorConnection):
     """
     Epson Serial connector
     """

@@ -20,11 +20,12 @@ from .const import (
 )
 from .error import ProjectorUnavailableError
 from .timeout import get_timeout
+from .base_connection import BaseProjectorConnection
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class ProjectorHttp:
+class ProjectorHttp(BaseProjectorConnection):
     """
     Epson projector class.
 
