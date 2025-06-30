@@ -8,8 +8,8 @@ class Lock:
     def __init__(self):
         """Init lock for sending request to projector when it is busy."""
         self._isLocked = False
-        self._timer = 0
-        self._operation = False
+        self._timer:float = 0
+        self._operation:bool|str = False
 
     def setLock(self, command):
         """Set lock on requests."""
