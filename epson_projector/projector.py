@@ -29,6 +29,7 @@ class Projector:
 
         :param str host:        Hostname/IP/serial to the projector
         :param obj websession:  Websession to pass for HTTP protocol
+        :param str type:        Type of connection to use ('http', 'tcp', 'serial')
         :param timeout_scale    Factor to multiply default timeouts by (for slow projectors)
 
         """
@@ -38,35 +39,31 @@ class Projector:
         self._power = None
         self._projector:BaseProjectorConnection
         if self._type == HTTP:
-            self._host = host
             from .projector_http import ProjectorHttp
-
             self._projector = ProjectorHttp(
                 host=host, websession=websession, port=HTTP_PORT
             )
         elif self._type == TCP:
             from .projector_tcp import ProjectorTcp
-
-            self._host = host
             self._projector = ProjectorTcp(host, TCP_PORT)
         elif self._type == SERIAL:
             from .projector_serial import ProjectorSerial
-
-            self._host = host
             self._projector = ProjectorSerial(host)
         else:
             raise ValueError(
-                f"Invalid type {self._type}. Use 'http', 'tcp' or 'serial'."
+                f"Invalid type {self._type}."
             )
 
     def close(self):
-        """Close connection. Not used in HTTP"""
+        """Close connection."""
         self._projector.close()
 
     def set_timeout_scale(self, timeout_scale=1.0):
+        """Set timeout scale for commands (to compensate for slow projectors)."""
         self._timeout_scale = timeout_scale
 
     async def get_serial_number(self):
+        """Get serial number from device."""
         return await self._projector.get_serial()
 
     async def get_power(self):
