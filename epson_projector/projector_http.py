@@ -20,11 +20,12 @@ from .const import (
 )
 from .error import ProjectorUnavailableError
 from .timeout import get_timeout
+from .base_connection import BaseProjectorConnection
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class ProjectorHttp:
+class ProjectorHttp(BaseProjectorConnection):
     """
     Epson projector class.
 
@@ -36,9 +37,8 @@ class ProjectorHttp:
         Epson Projector controller.
 
         :param str host:        IP address or hostname of Projector
+        :param obj websession:  AioHttpWebsession for HTTP protocol
         :param int port:        Port to connect to. Default 80.
-        :param bool encryption: User encryption to connect
-
         """
         self._host = host
         self._http_url = f"http://{self._host}:{port}/cgi-bin/"
@@ -96,8 +96,8 @@ class ProjectorHttp:
         ):
             raise ProjectorUnavailableError(STATE_UNAVAILABLE)
 
-    async def get_serial(self):
-        """Send TCP request for serial to Epson."""
+    async def get_serial_number(self):
+        """Send TCP request for serial number to Epson."""
         if not self._serial:
             try:
                 async with asyncio.timeout(10):

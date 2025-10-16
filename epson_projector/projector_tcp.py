@@ -3,6 +3,7 @@ import logging
 
 import asyncio
 
+from .base_connection import BaseProjectorConnection
 from .const import (
     BUSY,
     ESCVPNET_HELLO_COMMAND,
@@ -21,7 +22,7 @@ from .timeout import get_timeout
 _LOGGER = logging.getLogger(__name__)
 
 
-class ProjectorTcp:
+class ProjectorTcp(BaseProjectorConnection):
     """
     Epson TCP connector
     """
@@ -104,8 +105,8 @@ class ProjectorTcp:
                     return False
                 return response
 
-    async def get_serial(self):
-        """Send TCP request for serial to Epson."""
+    async def get_serial_number(self):
+        """Send TCP request for serial number to Epson."""
         if not self._serial:
             try:
                 async with asyncio.timeout(10):
