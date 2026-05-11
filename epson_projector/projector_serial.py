@@ -3,7 +3,6 @@ import logging
 
 import asyncio
 import serialx
-from serial.serialutil import SerialException
 from .const import ESCVP_HELLO_COMMAND, COLON, CR, GET_CR, BUSY, ERROR, SNO
 from .base_connection import BaseProjectorConnection
 
@@ -62,7 +61,7 @@ class ProjectorSerial(BaseProjectorConnection):
                         )
         except asyncio.TimeoutError:
             _LOGGER.error("Timeout error during connection")
-        except SerialException as se:
+        except (serialx.SerialException, OSError) as se:
             _LOGGER.error(f"Problem opening serial connection: {se}")
             self._isOpen = False
         return self.closed_connection_info()
@@ -123,7 +122,7 @@ class ProjectorSerial(BaseProjectorConnection):
                 _LOGGER.error("Timeout error during sending request %r", command)
                 self._timeouts += 1
                 self._check_timeout_reconnect()
-            except SerialException as se:
+            except (serialx.SerialException, OSError) as se:
                 _LOGGER.error(f"Error during serial write/read: {se}")
                 self.close()
 
