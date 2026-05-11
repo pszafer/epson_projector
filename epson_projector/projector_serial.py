@@ -29,7 +29,6 @@ class ProjectorSerial(BaseProjectorConnection):
         self._writer = None
         self._timeouts = 0
         self._isOpen = False
-        self._loop = asyncio.get_running_loop()
         self._serial = None
 
     async def async_init(self):
@@ -47,7 +46,7 @@ class ProjectorSerial(BaseProjectorConnection):
                     self._reader,
                     self._writer,
                 ) = await serialx.open_serial_connection(
-                    url=self._host, baudrate=9600, loop=self._loop
+                    url=self._host, baudrate=9600
                 )
                 if self._reader and self._writer:
                     self._isOpen = True
