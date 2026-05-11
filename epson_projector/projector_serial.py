@@ -62,7 +62,7 @@ class ProjectorSerial(BaseProjectorConnection):
         except asyncio.TimeoutError:
             _LOGGER.error("Timeout error during connection")
         except (serialx.SerialException, OSError) as se:
-            _LOGGER.error(f"Problem opening serial connection: {se}")
+            _LOGGER.error("Problem opening serial connection: %s", se)
             self._isOpen = False
         return self.closed_connection_info()
 
@@ -123,7 +123,7 @@ class ProjectorSerial(BaseProjectorConnection):
                 self._timeouts += 1
                 self._check_timeout_reconnect()
             except (serialx.SerialException, OSError) as se:
-                _LOGGER.error(f"Error during serial write/read: {se}")
+                _LOGGER.error("Error during serial write/read: %s", se)
                 self.close()
 
         return False
