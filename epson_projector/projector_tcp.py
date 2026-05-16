@@ -48,6 +48,7 @@ class ProjectorTcp(BaseProjectorConnection):
                     host=self._host, port=self._port, loop=self._loop
                 )
                 self._writer.write(ESCVPNET_HELLO_COMMAND.encode())
+                await self._writer.drain()
                 response = await self._reader.read(16)
                 if response[0:10].decode() == ESCVPNETNAME and response[14] == 32:
                     self._isOpen = True
@@ -99,6 +100,7 @@ class ProjectorTcp(BaseProjectorConnection):
             bytes_to_read = bytes_to_read if bytes_to_read else 16
             async with asyncio.timeout(timeout):
                 self._writer.write(command.encode())
+                await self._writer.drain()
                 response = await self._reader.read(bytes_to_read)
                 response = response.decode().replace(CR_COLON, "")
                 if response == ERROR:
@@ -117,6 +119,7 @@ class ProjectorTcp(BaseProjectorConnection):
                         )
                         _LOGGER.debug("Asking for serial number.")
                         writer.write(SERIAL_BYTE)
+                        await writer.drain()
                         response = await reader.read(32)
                         self._serial = response[24:].decode()
                         writer.close()

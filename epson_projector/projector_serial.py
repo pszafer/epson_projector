@@ -50,6 +50,7 @@ class ProjectorSerial(BaseProjectorConnection):
                 if self._reader and self._writer:
                     self._isOpen = True
                     self._writer.write(ESCVP_HELLO_COMMAND.encode())
+                    await self._writer.drain()
                     response = await self._reader.readuntil(COLON.encode())
                     if str(response.decode().strip(CR)) == ":":
                         _LOGGER.info("Connection open")
@@ -111,6 +112,7 @@ class ProjectorSerial(BaseProjectorConnection):
                 async with asyncio.timeout(timeout):
                     _LOGGER.debug("Sent to Epson: %r with timeout %d", command, timeout)
                     self._writer.write(command.encode())
+                    await self._writer.drain()
                     response = await self._reader.readuntil(COLON.encode())
                     response = response[:-1].decode().rstrip(CR)
                     _LOGGER.debug("Response from Epson %r", response)
