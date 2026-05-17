@@ -84,7 +84,7 @@ Error response (missing ? at the end)
 
 ### Example
 
-This is captured from the webinterface
+This is captured from the web interface
 
 ```text
 GET /cgi-bin/json_query?jsoncallback=SOURCELIST?
@@ -121,13 +121,13 @@ GET /cgi-bin/directsend?ASPECT=00
 
 ### Response
 
-HTTP 200. The response is empty based on captures from the webinterface.
+HTTP 200. The response is empty based on captures from the web interface.
 
 ## Authentication
 
 It seems like older models did not have (or require) authorization. Newer models (like LS11000) require it.
 
-The used method is [Digest Authentication](https://en.wikipedia.org/wiki/Digest_access_authentication) which is a wellknown standard.
+The used method is [Digest Authentication](https://en.wikipedia.org/wiki/Digest_access_authentication) which is a well-known standard.
 
 The user is "EPSONWEB"
 
@@ -147,9 +147,9 @@ curl --digest --user EPSONWEB:password -H 'Referer: http://192.168.178.46/cgi-bi
 
 ## Web UI observations
 
-Some observations from using the webinterface and watching the requests in the devtools.
+Some observations from using the web interface and watching the requests in the devtools.
 
-All requests seem to include an additional query parameter `_` which seems to be a timestamp. Might be linked to the authentication because the full URL is als in the `authorization` header.
+All requests seem to include an additional query parameter `_` which seems to be a timestamp. Might be linked to the authentication because the full URL is also in the `authorization` header.
 
 On the remote webpage the commands are sent to a different URL (note the `Remote` part).
 
