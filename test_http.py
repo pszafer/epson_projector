@@ -42,6 +42,8 @@ async def main_web(args):
         )
         data = await projector.get_property(POWER)
         print(data)
+        data = await projector.get_serial_number()
+        print(data)
     #    await projector.send_command(PWR_ON)
         # data = await projector.send_request("EEMP0100À¨E")
         # print(data)
