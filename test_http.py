@@ -37,7 +37,8 @@ async def main_web(args):
         projector = epson.Projector(
             host=args.host,
             websession=websession,
-            type="http"
+            type="http",
+            http_port=args.port,
         )
         data = await projector.get_property(POWER)
         print(data)
@@ -54,6 +55,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "host",
         help="Hostname or IP address of the projector.",
+    )
+    parser.add_argument(
+        "--port",
+        help="Port of the projector. Usually not needed, but helpful when connecting to an emulator.",
+        default=80,
     )
     parser.add_argument(
         "--password",
