@@ -88,7 +88,6 @@ class ProjectorHttp(BaseProjectorConnection):
                     if response.status != HTTP_OK:
                         _LOGGER.warning("Error message %d from Epson.", response.status)
                         return False
-                    _LOGGER.debug("Received response, content: %s", await response.text())
                     if type == JSON_QUERY:
                         return await response.json()
                     return response
