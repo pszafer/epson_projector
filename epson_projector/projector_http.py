@@ -80,12 +80,15 @@ class ProjectorHttp(BaseProjectorConnection):
         try:
             async with asyncio.timeout(timeout):
                 url = "{url}{type}".format(url=self._http_url, type=type)
+                _LOGGER.debug("Sending request: %s", params)
                 async with self.websession.get(
                     url=url, params=params, headers=self._headers
                 ) as response:
+                    _LOGGER.debug("Received response, status: %s", response.status)
                     if response.status != HTTP_OK:
                         _LOGGER.warning("Error message %d from Epson.", response.status)
                         return False
+                    _LOGGER.debug("Received response, content: %s", await response.text())
                     if type == JSON_QUERY:
                         return await response.json()
                     return response
