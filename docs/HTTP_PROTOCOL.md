@@ -1,6 +1,6 @@
 # Epson HTTP Protocol format
 
-This is mostly reverse-engineered from `epson_projector/projector_http.py` in [epson-projector](https://github.com/pszafer/epson_projector) and observations of communitcation with LS11000 projector.
+This is mostly reverse-engineered from `epson_projector/projector_http.py` in [epson-projector](https://github.com/pszafer/epson_projector) and observations of communication with LS11000 projector.
 
 ---
 
