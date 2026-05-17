@@ -24,13 +24,20 @@ async def main():
     async with aiohttp.ClientSession() as session:
         await run(session)
 
+    # With a password
+    digest_auth = aiohttp.DigestAuthMiddleware(
+        login="EPSONWEB", password="YOUR_PASSWORD"
+    )
+    async with aiohttp.ClientSession(middlewares=[digest_auth]) as session:
+        await run(session)
+
+
 
 async def run(websession):
     """Use Projector class of epson module and check if it is turned on."""
     projector = epson.Projector(
         host='HOSTNAME',
-        websession=websession,
-        encryption=False)
+        websession=websession)
     data = await projector.get_property(POWER)
     print(data)
 
