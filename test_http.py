@@ -64,7 +64,7 @@ if __name__ == "__main__":
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
     )
-    
+
     args = parser.parse_args()
 
     logging.basicConfig(level=args.loglevel)

@@ -106,9 +106,9 @@ class ProjectorHttp(BaseProjectorConnection):
         # This command also works when the projector is in standby
         if not self._serial:
             try:
-                 response = await self.get_property(SNO, get_timeout(SNO))
+                response = await self.get_property(SNO, get_timeout(SNO))
             except ProjectorUnavailableError:
-                 response = False
+                response = False
             else:
                 if response and response != BUSY and response != STATE_UNAVAILABLE:
                     self._serial = response
