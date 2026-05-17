@@ -52,7 +52,7 @@ Generic format
 `reply` is the raw ESC/VP21 response value.
 `error` is set when there was an error.
 
-Reponse from `PWR?` command
+Response from `PWR?` command
 
 ```json
 {
