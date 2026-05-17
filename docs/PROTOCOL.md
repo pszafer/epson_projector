@@ -22,6 +22,8 @@ The type "directsend" seems to be sending of plain ESC/VP21 commands. The type "
 
 The serial number of the projector seems to be obtained through the same way as done with `projector_tcp.py`.
 
+More details see: [HTTP_PROTOCOL.md](HTTP_PROTOCOL.md)
+
 ### ESC/VP.net
 
 This connection method is implemented in `protocol_tcp.py`
