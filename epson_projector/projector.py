@@ -32,6 +32,7 @@ class Projector:
         :param obj websession:  Websession to pass for HTTP protocol
         :param str type:        Type of connection to use ('http', 'tcp', 'serial')
         :param timeout_scale    Factor to multiply default timeouts by (for slow projectors)
+        :param int http_port:   Port to connect to for HTTP protocol. Default 80.
 
         """
         self._lock = Lock()
