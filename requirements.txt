@@ -1,2 +1,2 @@
-aiohttp>=3.3.0
+aiohttp>=3.12.0
 serialx>=1.2.2

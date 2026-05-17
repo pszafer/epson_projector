@@ -23,6 +23,7 @@ class Projector:
         websession=None,
         type=HTTP,
         timeout_scale=1.0,
+        http_port=HTTP_PORT
     ):
         """
         Epson Projector controller.
@@ -31,6 +32,7 @@ class Projector:
         :param obj websession:  Websession to pass for HTTP protocol
         :param str type:        Type of connection to use ('http', 'tcp', 'serial')
         :param timeout_scale    Factor to multiply default timeouts by (for slow projectors)
+        :param int http_port:   Port to connect to for HTTP protocol. Default 80.
 
         """
         self._lock = Lock()
@@ -41,7 +43,7 @@ class Projector:
         if self._type == HTTP:
             from .projector_http import ProjectorHttp
             self._projector = ProjectorHttp(
-                host=host, websession=websession, port=HTTP_PORT
+                host=host, websession=websession, port=http_port
             )
         elif self._type == TCP:
             from .projector_tcp import ProjectorTcp

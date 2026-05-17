@@ -23,12 +23,22 @@ logging.basicConfig(level=logging.DEBUG)
 
 async def main_web(args):
     """Run main with aiohttp ClientSession."""
-    async with aiohttp.ClientSession() as websession:
+
+    middlewares = []
+    if args.password:
+        _LOGGER.info("Using password for authentication")
+        digest_auth = aiohttp.DigestAuthMiddleware(
+            login="EPSONWEB", password=args.password
+        )
+        middlewares.append(digest_auth)
+
+    async with aiohttp.ClientSession(middlewares=middlewares) as websession:
         """Use Projector class of epson module and check if it is turned on."""
         projector = epson.Projector(
             host=args.host,
             websession=websession,
-            type="http"
+            type="http",
+            http_port=args.port,
         )
         data = await projector.get_property(POWER)
         print(data)
@@ -45,6 +55,15 @@ if __name__ == "__main__":
     parser.add_argument(
         "host",
         help="Hostname or IP address of the projector.",
+    )
+    parser.add_argument(
+        "--port",
+        help="Port of the projector. Usually not needed, but helpful when connecting to an emulator.",
+        default=80,
+    )
+    parser.add_argument(
+        "--password",
+        help="Password for the projector. Leave empty if not needed.",
     )
     args = parser.parse_args()
 
