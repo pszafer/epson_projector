@@ -105,9 +105,13 @@ class ProjectorHttp(BaseProjectorConnection):
         # First attempt to get serial number through get_property
         # This command also works when the projector is in standby
         if not self._serial:
-            response = await self.get_property(SNO, get_timeout(SNO))
-            if response and response != BUSY and response != STATE_UNAVAILABLE:
-                self._serial = response
+            try:
+                 response = await self.get_property(SNO, get_timeout(SNO))
+            except ProjectorUnavailableError:
+                 response = False
+            else:
+                if response and response != BUSY and response != STATE_UNAVAILABLE:
+                    self._serial = response
 
         # Otherwise fallback to the same method as used for TCP request for serial number
         if not self._serial:
@@ -127,6 +131,8 @@ class ProjectorHttp(BaseProjectorConnection):
                         writer.close()
                     else:
                         _LOGGER.error("Is projector turned on?")
+            except ProjectorUnavailableError:
+                _LOGGER.error("Projector unavailable. Is projector connected and turned on?")
             except asyncio.TimeoutError:
                 _LOGGER.error(
                     "Timeout error receiving SERIAL of projector. Is projector turned on?"
