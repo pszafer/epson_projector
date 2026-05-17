@@ -11,6 +11,7 @@ from .const import (
     EPSON_KEY_COMMANDS,
     DIRECT_SEND,
     HTTP_OK,
+    SNO,
     STATE_UNAVAILABLE,
     POWER,
     EPSON_CODES,
@@ -79,9 +80,11 @@ class ProjectorHttp(BaseProjectorConnection):
         try:
             async with asyncio.timeout(timeout):
                 url = "{url}{type}".format(url=self._http_url, type=type)
+                _LOGGER.debug("Sending request: %s", params)
                 async with self.websession.get(
                     url=url, params=params, headers=self._headers
                 ) as response:
+                    _LOGGER.debug("Received response, status: %s", response.status)
                     if response.status != HTTP_OK:
                         _LOGGER.warning("Error message %d from Epson.", response.status)
                         return False
@@ -97,7 +100,20 @@ class ProjectorHttp(BaseProjectorConnection):
             raise ProjectorUnavailableError(STATE_UNAVAILABLE)
 
     async def get_serial_number(self):
-        """Send TCP request for serial number to Epson."""
+        """Request for serial number to Epson."""
+
+        # First attempt to get serial number through get_property
+        # This command also works when the projector is in standby
+        if not self._serial:
+            try:
+                response = await self.get_property(SNO, get_timeout(SNO))
+            except ProjectorUnavailableError:
+                response = False
+            else:
+                if response and response != BUSY and response != STATE_UNAVAILABLE:
+                    self._serial = response
+
+        # Otherwise fallback to the same method as used for TCP request for serial number
         if not self._serial:
             try:
                 async with asyncio.timeout(10):
@@ -115,8 +131,11 @@ class ProjectorHttp(BaseProjectorConnection):
                         writer.close()
                     else:
                         _LOGGER.error("Is projector turned on?")
+            except ProjectorUnavailableError:
+                _LOGGER.error("Projector unavailable. Is projector connected and turned on?")
             except asyncio.TimeoutError:
                 _LOGGER.error(
                     "Timeout error receiving SERIAL of projector. Is projector turned on?"
                 )
+
         return self._serial

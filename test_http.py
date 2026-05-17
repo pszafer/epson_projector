@@ -11,15 +11,6 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(
-    logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-)
-_LOGGER.addHandler(console_handler)
-_LOGGER.setLevel(logging.DEBUG)
-
-logging.basicConfig(level=logging.DEBUG)
-
 
 async def main_web(args):
     """Run main with aiohttp ClientSession."""
@@ -41,6 +32,8 @@ async def main_web(args):
             http_port=args.port,
         )
         data = await projector.get_property(POWER)
+        print(data)
+        data = await projector.get_serial_number()
         print(data)
     #    await projector.send_command(PWR_ON)
         # data = await projector.send_request("EEMP0100À¨E")
@@ -65,6 +58,15 @@ if __name__ == "__main__":
         "--password",
         help="Password for the projector. Leave empty if not needed.",
     )
+    parser.add_argument(
+        "--loglevel",
+        help="Set the logging level. Default is INFO.",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+    )
+
     args = parser.parse_args()
+
+    logging.basicConfig(level=args.loglevel)
 
     asyncio.run(main_web(args))
