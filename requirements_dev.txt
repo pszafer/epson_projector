@@ -1,4 +1,3 @@
 -r requirements.txt
 
-types-pyserial
 mypy==1.16.0

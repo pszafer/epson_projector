@@ -109,6 +109,7 @@ class ProjectorHttp(BaseProjectorConnection):
                         )
                         _LOGGER.debug("Asking for serial number.")
                         writer.write(SERIAL_BYTE)
+                        await writer.drain()
                         response = await reader.read(32)
                         self._serial = response[24:].decode()
                         writer.close()

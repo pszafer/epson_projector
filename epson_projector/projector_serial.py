@@ -2,8 +2,7 @@
 import logging
 
 import asyncio
-import serial_asyncio_fast
-from serial.serialutil import SerialException
+import serialx
 from .const import ESCVP_HELLO_COMMAND, COLON, CR, GET_CR, BUSY, ERROR, SNO
 from .base_connection import BaseProjectorConnection
 
@@ -29,7 +28,6 @@ class ProjectorSerial(BaseProjectorConnection):
         self._writer = None
         self._timeouts = 0
         self._isOpen = False
-        self._loop = asyncio.get_running_loop()
         self._serial = None
 
     async def async_init(self):
@@ -46,12 +44,13 @@ class ProjectorSerial(BaseProjectorConnection):
                 (
                     self._reader,
                     self._writer,
-                ) = await serial_asyncio_fast.open_serial_connection(
-                    url=self._host, baudrate=9600, loop=self._loop
+                ) = await serialx.open_serial_connection(
+                    url=self._host, baudrate=9600
                 )
                 if self._reader and self._writer:
                     self._isOpen = True
                     self._writer.write(ESCVP_HELLO_COMMAND.encode())
+                    await self._writer.drain()
                     response = await self._reader.readuntil(COLON.encode())
                     if str(response.decode().strip(CR)) == ":":
                         _LOGGER.info("Connection open")
@@ -63,8 +62,8 @@ class ProjectorSerial(BaseProjectorConnection):
                         )
         except asyncio.TimeoutError:
             _LOGGER.error("Timeout error during connection")
-        except SerialException as se:
-            _LOGGER.error(f"Problem opening serial connection: {se}")
+        except (serialx.SerialException, OSError) as se:
+            _LOGGER.error("Problem opening serial connection: %s", se)
             self._isOpen = False
         return self.closed_connection_info()
 
@@ -113,6 +112,7 @@ class ProjectorSerial(BaseProjectorConnection):
                 async with asyncio.timeout(timeout):
                     _LOGGER.debug("Sent to Epson: %r with timeout %d", command, timeout)
                     self._writer.write(command.encode())
+                    await self._writer.drain()
                     response = await self._reader.readuntil(COLON.encode())
                     response = response[:-1].decode().rstrip(CR)
                     _LOGGER.debug("Response from Epson %r", response)
@@ -124,8 +124,8 @@ class ProjectorSerial(BaseProjectorConnection):
                 _LOGGER.error("Timeout error during sending request %r", command)
                 self._timeouts += 1
                 self._check_timeout_reconnect()
-            except SerialException as se:
-                _LOGGER.error(f"Error during serial write/read: {se}")
+            except (serialx.SerialException, OSError) as se:
+                _LOGGER.error("Error during serial write/read: %s", se)
                 self.close()
 
         return False

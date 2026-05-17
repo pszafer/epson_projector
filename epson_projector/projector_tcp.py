@@ -38,16 +38,16 @@ class ProjectorTcp(BaseProjectorConnection):
         self._port = port
         self._isOpen = False
         self._serial = None
-        self._loop = asyncio.get_running_loop()
 
     async def async_init(self):
         """Async init to open connection with projector."""
         try:
             async with asyncio.timeout(10):
                 self._reader, self._writer = await asyncio.open_connection(
-                    host=self._host, port=self._port, loop=self._loop
+                    host=self._host, port=self._port
                 )
                 self._writer.write(ESCVPNET_HELLO_COMMAND.encode())
+                await self._writer.drain()
                 response = await self._reader.read(16)
                 if response[0:10].decode() == ESCVPNETNAME and response[14] == 32:
                     self._isOpen = True
@@ -99,6 +99,7 @@ class ProjectorTcp(BaseProjectorConnection):
             bytes_to_read = bytes_to_read if bytes_to_read else 16
             async with asyncio.timeout(timeout):
                 self._writer.write(command.encode())
+                await self._writer.drain()
                 response = await self._reader.read(bytes_to_read)
                 response = response.decode().replace(CR_COLON, "")
                 if response == ERROR:
@@ -113,10 +114,11 @@ class ProjectorTcp(BaseProjectorConnection):
                     power_on = await self.get_property(POWER, get_timeout(POWER))
                     if power_on == EPSON_CODES[POWER]:
                         reader, writer = await asyncio.open_connection(
-                            host=self._host, port=TCP_SERIAL_PORT, loop=self._loop
+                            host=self._host, port=TCP_SERIAL_PORT
                         )
                         _LOGGER.debug("Asking for serial number.")
                         writer.write(SERIAL_BYTE)
+                        await writer.drain()
                         response = await reader.read(32)
                         self._serial = response[24:].decode()
                         writer.close()
