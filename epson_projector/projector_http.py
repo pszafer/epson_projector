@@ -11,6 +11,7 @@ from .const import (
     EPSON_KEY_COMMANDS,
     DIRECT_SEND,
     HTTP_OK,
+    SNO,
     STATE_UNAVAILABLE,
     POWER,
     EPSON_CODES,
@@ -97,7 +98,16 @@ class ProjectorHttp(BaseProjectorConnection):
             raise ProjectorUnavailableError(STATE_UNAVAILABLE)
 
     async def get_serial_number(self):
-        """Send TCP request for serial number to Epson."""
+        """Request for serial number to Epson."""
+
+        # First attempt to get serial number through get_property
+        # This command also works when the projector is in standby
+        if not self._serial:
+            response = await self.get_property(SNO, get_timeout(SNO))
+            if response and response != BUSY and response != STATE_UNAVAILABLE:
+                self._serial = response
+
+        # Otherwise fallback to the same method as used for TCP request for serial number
         if not self._serial:
             try:
                 async with asyncio.timeout(10):
@@ -119,4 +129,5 @@ class ProjectorHttp(BaseProjectorConnection):
                 _LOGGER.error(
                     "Timeout error receiving SERIAL of projector. Is projector turned on?"
                 )
+
         return self._serial

@@ -129,6 +129,7 @@ EPSON_KEY_COMMANDS = {
     "LENSMEMORY_8": [("POPLP", "08")],
     "LENSMEMORY_9": [("POPLP", "09")],
     "LENSMEMORY_10": [("POPLP", "0A")],
+    "SNO": [("jsoncallback", "SNO?")],
 }
 
 DEFAULT_TIMEOUT_TIME = 3
