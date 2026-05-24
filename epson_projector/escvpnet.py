@@ -1,4 +1,8 @@
-"""ESC/VP.net protocol"""
+"""
+ESC/VP.net protocol implementation based on the document found here:
+https://www.epson.com.au/d/pub/epson/techtips/escvp.netmanual_e_f.pdf
+"""
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 import asyncio
@@ -9,6 +13,8 @@ import struct
 
 PROTOCOL_IDENTIFIER = b"ESC/VP.net"
 VERSION_1_0 = 0x10  # Protocol version 1.0
+
+ESC_VPNET_PORT = 3629
 
 COLON = b":"
 
@@ -53,15 +59,22 @@ class EscVp21Communication:
 
 
 @unique
-class EscVpNetMessageType(IntEnum):
+class MessageType(IntEnum):
+    UNKNOWN = -1
     NULL = 0  # reserved
     HELLO = 1
     PASSWORD = 2
     CONNECT = 3
 
+    @classmethod
+    def _missing_(cls, value: object) -> MessageType:
+        _LOGGER.warning("Unknown value '%s' for %s", value, cls.__name__)
+        return cls.UNKNOWN
+
 
 @unique
-class EscVpNetMessageStatus(IntEnum):
+class MessageStatus(IntEnum):
+    UNKNOWN = -1
     REQUEST = 0x00
     OK = 0x20
     BAD_REQUEST = 0x40
@@ -73,9 +86,15 @@ class EscVpNetMessageStatus(IntEnum):
     SERVICE_UNAVAILABLE = 0x53  # Projector is BUSY
     PROTOCOL_VERSION_NOT_SUPPORTED = 0x55
 
+    @classmethod
+    def _missing_(cls, value: object) -> MessageStatus:
+        _LOGGER.warning("Unknown value '%s' for %s", value, cls.__name__)
+        return cls.UNKNOWN
+
 
 @unique
-class EscVpNetHeaderId(IntEnum):
+class HeaderId(IntEnum):
+    UNKNOWN = -1
     NULL = 0  # reserved
     PASSWORD = 1
     NEW_PASSWORD = 2
@@ -83,10 +102,14 @@ class EscVpNetHeaderId(IntEnum):
     IM_TYPE = 4
     PROJECTOR_COMMAND_TYPE = 5
 
+    @classmethod
+    def _missing_(cls, value: object) -> HeaderId:
+        _LOGGER.warning("Unknown value '%s' for %s", value, cls.__name__)
+        return cls.UNKNOWN
 
 @dataclass
-class EscVpNetRawHeaderData:
-    header_id: EscVpNetHeaderId
+class RawHeaderData:
+    header_id: HeaderId
     attribute_value: int
     info: str
 
@@ -94,13 +117,13 @@ class EscVpNetRawHeaderData:
 
     @staticmethod
     def size() -> int:
-        return struct.calcsize(EscVpNetRawHeaderData._FORMAT)
+        return struct.calcsize(RawHeaderData._FORMAT)
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> "EscVpNetRawHeaderData":
+    def from_bytes(cls, data: bytes) -> "RawHeaderData":
         unpacked = struct.unpack(cls._FORMAT, data)
         return cls(
-            header_id=EscVpNetHeaderId(unpacked[0]),
+            header_id=HeaderId(unpacked[0]),
             attribute_value=unpacked[1],
             info=unpacked[2].decode("ascii").rstrip("\x00"),
         )
@@ -114,20 +137,22 @@ class EscVpNetRawHeaderData:
         )
 
 
-class EscVpNetHeaderBase(ABC):
+class HeaderBase(ABC):
 
     @staticmethod
     def size() -> int:
-        return EscVpNetRawHeaderData.size()
+        return RawHeaderData.size()
 
     @classmethod
     @abstractmethod
-    def id(cls) -> EscVpNetHeaderId:
+    def id(cls) -> HeaderId:
         raise NotImplementedError("Header id is not implemented")
 
     @classmethod
     @abstractmethod
-    def _from_raw_header(cls, raw_header: EscVpNetRawHeaderData) -> "EscVpNetHeaderBase":
+    def _from_raw_header(
+        cls, raw_header: RawHeaderData
+    ) -> "HeaderBase":
         raise NotImplementedError("Method _from_raw_header is not implemented")
 
     @abstractmethod
@@ -135,42 +160,45 @@ class EscVpNetHeaderBase(ABC):
         raise NotImplementedError("Method to_bytes is not implemented")
 
     @classmethod
-    async def from_stream(cls, stream: asyncio.StreamReader) -> "EscVpNetHeaderBase":
-        data = await stream.readexactly(EscVpNetRawHeaderData.size())
-        return cls._from_raw_header(EscVpNetRawHeaderData.from_bytes(data))
+    async def from_stream(cls, stream: asyncio.StreamReader) -> "HeaderBase":
+        data = await stream.readexactly(RawHeaderData.size())
+        return cls._from_raw_header(RawHeaderData.from_bytes(data))
 
 
-class EscVpNetPasswordHeader(EscVpNetHeaderBase):
+class PasswordHeader(HeaderBase):
 
     def __init__(self, password: str):
         self._password = password
 
     @classmethod
-    def id(cls) -> EscVpNetHeaderId:
-        return EscVpNetHeaderId.PASSWORD
+    def id(cls) -> HeaderId:
+        return HeaderId.PASSWORD
 
     @classmethod
-    def _from_raw_header(cls, raw_header: EscVpNetRawHeaderData) -> "EscVpNetHeaderBase":
+    def _from_raw_header(
+        cls, raw_header: RawHeaderData
+    ) -> "HeaderBase":
         assert (
             raw_header.header_id == cls.id()
         ), f"Unexpected header id: {raw_header.header_id}"
         return cls(password=raw_header.info)
 
     def to_bytes(self) -> bytes:
-        return EscVpNetRawHeaderData(
+        return RawHeaderData(
             header_id=self.id(),
             attribute_value=1 if self._password else 0,
             info=self._password,
         ).to_bytes()
 
-class EscVpNetNewPasswordHeader(EscVpNetPasswordHeader):
+
+class NewPasswordHeader(PasswordHeader):
 
     @classmethod
-    def id(cls) -> EscVpNetHeaderId:
-        return EscVpNetHeaderId.NEW_PASSWORD
+    def id(cls) -> HeaderId:
+        return HeaderId.NEW_PASSWORD
 
 
-class EscVpNetProjectorNameHeader(EscVpNetHeaderBase):
+class ProjectorNameHeader(HeaderBase):
 
     def __init__(self, projector_name: str):
         self._projector_name = projector_name
@@ -180,29 +208,35 @@ class EscVpNetProjectorNameHeader(EscVpNetHeaderBase):
         return self._projector_name
 
     @classmethod
-    def id(cls) -> EscVpNetHeaderId:
-        return EscVpNetHeaderId.PROJECTOR_NAME
+    def id(cls) -> HeaderId:
+        return HeaderId.PROJECTOR_NAME
 
     @classmethod
-    def _from_raw_header(cls, raw_header: EscVpNetRawHeaderData) -> "EscVpNetHeaderBase":
+    def _from_raw_header(
+        cls, raw_header: RawHeaderData
+    ) -> "HeaderBase":
         assert (
             raw_header.header_id == cls.id()
         ), f"Unexpected header id: {raw_header.header_id}"
         if raw_header.attribute_value > 1:
-            raise NotImplementedError(f"Support for encoding: {raw_header.attribute_value} is not implemented")
+            raise NotImplementedError(
+                f"Support for text encoding: {raw_header.attribute_value} is not implemented"
+            )
         return cls(projector_name=raw_header.info)
 
     def to_bytes(self) -> bytes:
-        return EscVpNetRawHeaderData(
+        return RawHeaderData(
             header_id=self.id(),
             attribute_value=1 if self._projector_name else 0,
             info=self._projector_name,
         ).to_bytes()
 
-# ImType is currently an int because the mapping in the documentation is unclear
+
+# ImType is currently an int because the mapping in the documentation it is unclear
 # if the values are hex or decimal. It seems decimal, but there is "0C" for Type D
-# Next to that the use of this information is unknown.
-class EscVpNetImTypeHeader(EscVpNetHeaderBase):
+# Next to that the use of this information is unknown and the list seems out of date
+# because LS11000W returns 56 which is unmapped.
+class ImTypeHeader(HeaderBase):
 
     def __init__(self, im_type: int):
         self._im_type = im_type
@@ -212,29 +246,42 @@ class EscVpNetImTypeHeader(EscVpNetHeaderBase):
         return self._im_type
 
     @classmethod
-    def id(cls) -> EscVpNetHeaderId:
-        return EscVpNetHeaderId.IM_TYPE
+    def id(cls) -> HeaderId:
+        return HeaderId.IM_TYPE
 
     @classmethod
-    def _from_raw_header(cls, raw_header: EscVpNetRawHeaderData) -> "EscVpNetHeaderBase":
+    def _from_raw_header(
+        cls, raw_header: RawHeaderData
+    ) -> "HeaderBase":
         assert (
             raw_header.header_id == cls.id()
         ), f"Unexpected header id: {raw_header.header_id}"
         return cls(im_type=raw_header.attribute_value)
 
     def to_bytes(self) -> bytes:
-        return EscVpNetRawHeaderData(
+        return RawHeaderData(
             header_id=self.id(),
             attribute_value=self._im_type,
             info="",
         ).to_bytes()
 
+
 @unique
 class CommandType(IntEnum):
+    UNKNOWN = -1
     ESC_VP_LEVEL_6 = 0x16  # Reserved
-    ESCC_VP21_V1_0 = 0x21
+    ESC_VP21_V1_0 = 0x21
 
-class EscVpNetProjectorCommandTypeHeader(EscVpNetHeaderBase):
+    @classmethod
+    def _missing_(cls, value: object) -> CommandType:
+        _LOGGER.warning("Unknown value '%s' for %s", value, cls.__name__)
+        return cls.UNKNOWN
+
+
+
+
+
+class ProjectorCommandTypeHeader(HeaderBase):
 
     def __init__(self, command_type: CommandType):
         self._command_type = command_type
@@ -244,56 +291,57 @@ class EscVpNetProjectorCommandTypeHeader(EscVpNetHeaderBase):
         return self._command_type
 
     @classmethod
-    def id(cls) -> EscVpNetHeaderId:
-        return EscVpNetHeaderId.PROJECTOR_COMMAND_TYPE
+    def id(cls) -> HeaderId:
+        return HeaderId.PROJECTOR_COMMAND_TYPE
 
     @classmethod
-    def _from_raw_header(cls, raw_header: EscVpNetRawHeaderData) -> "EscVpNetHeaderBase":
+    def _from_raw_header(
+        cls, raw_header: RawHeaderData
+    ) -> HeaderBase:
         assert (
             raw_header.header_id == cls.id()
         ), f"Unexpected header id: {raw_header.header_id}"
         return cls(command_type=CommandType(raw_header.attribute_value))
 
     def to_bytes(self) -> bytes:
-        return EscVpNetRawHeaderData(
+        return RawHeaderData(
             header_id=self.id(),
             attribute_value=self._command_type.value,
             info="",
         ).to_bytes()
 
-class EscVpNetHeaderFactory:
+
+class HeaderFactory:
 
     @staticmethod
-    def from_bytes(data: bytes) -> EscVpNetHeaderBase | None:
-        raw_header = EscVpNetRawHeaderData.from_bytes(data)
+    def from_bytes(data: bytes) -> HeaderBase | None:
+        raw_header = RawHeaderData.from_bytes(data)
 
-        if raw_header.header_id == EscVpNetPasswordHeader.id():
-            return EscVpNetPasswordHeader._from_raw_header(raw_header)
-        elif raw_header.header_id == EscVpNetNewPasswordHeader.id():
-            return EscVpNetNewPasswordHeader._from_raw_header(raw_header)
-        elif raw_header.header_id == EscVpNetProjectorNameHeader.id():
-            return EscVpNetProjectorNameHeader._from_raw_header(raw_header)
-        elif raw_header.header_id == EscVpNetImTypeHeader.id():
-            return EscVpNetImTypeHeader._from_raw_header(raw_header)
-        elif raw_header.header_id == EscVpNetProjectorCommandTypeHeader.id():
-            return EscVpNetProjectorCommandTypeHeader._from_raw_header(raw_header)
+        if raw_header.header_id == PasswordHeader.id():
+            return PasswordHeader._from_raw_header(raw_header)
+        elif raw_header.header_id == NewPasswordHeader.id():
+            return NewPasswordHeader._from_raw_header(raw_header)
+        elif raw_header.header_id == ProjectorNameHeader.id():
+            return ProjectorNameHeader._from_raw_header(raw_header)
+        elif raw_header.header_id == ImTypeHeader.id():
+            return ImTypeHeader._from_raw_header(raw_header)
+        elif raw_header.header_id == ProjectorCommandTypeHeader.id():
+            return ProjectorCommandTypeHeader._from_raw_header(raw_header)
 
-        logging.warning(
-            "Header with id {%s} is not supported", raw_header.header_id
-        )
+        _LOGGER.warning("Header with id {%s} is not supported", raw_header.header_id)
         return None
 
     @staticmethod
-    async def from_stream(stream: asyncio.StreamReader) -> EscVpNetHeaderBase | None:
-        data = await stream.readexactly(EscVpNetRawHeaderData.size())
-        return EscVpNetHeaderFactory.from_bytes(data)
+    async def from_stream(stream: asyncio.StreamReader) -> HeaderBase | None:
+        data = await stream.readexactly(RawHeaderData.size())
+        return HeaderFactory.from_bytes(data)
 
 
 @dataclass
 class EscVpNetMessage:
-    type_id: EscVpNetMessageType
-    status: EscVpNetMessageStatus
-    headers: list[EscVpNetHeaderBase] = field(default_factory=list)
+    type_id: MessageType
+    status: MessageStatus
+    headers: list[HeaderBase] = field(default_factory=list)
 
     """
     ESC/VP.net message.
@@ -309,7 +357,14 @@ class EscVpNetMessage:
     _FORMAT = "<10s B B H B B"
 
     @classmethod
-    async def from_stream(cls, stream: asyncio.StreamReader) -> "EscVpNetMessage":
+    async def from_bytes(cls, data: bytes) -> EscVpNetMessage:
+        stream = asyncio.StreamReader()
+        stream.feed_data(data)
+        stream.feed_eof()
+        return await cls.from_stream(stream)
+
+    @classmethod
+    async def from_stream(cls, stream: asyncio.StreamReader) -> EscVpNetMessage:
         data = await stream.readexactly(struct.calcsize(cls._FORMAT))
 
         unpacked = struct.unpack(cls._FORMAT, data)
@@ -324,12 +379,12 @@ class EscVpNetMessage:
         headers = []
 
         for _ in range(header_count):
-            if header := await EscVpNetHeaderFactory.from_stream(stream):
+            if header := await HeaderFactory.from_stream(stream):
                 headers.append(header)
 
         return cls(
-            type_id=EscVpNetMessageType(unpacked[2]),
-            status=EscVpNetMessageStatus(unpacked[4]),
+            type_id=MessageType(unpacked[2]),
+            status=MessageStatus(unpacked[4]),
             headers=headers,
         )
 
@@ -353,27 +408,125 @@ class EscVpNetMessage:
         return message
 
 
-def raise_from_status(status: EscVpNetMessageStatus):
-    if status == EscVpNetMessageStatus.BAD_REQUEST:
+def raise_from_status(status: MessageStatus):
+    if status == MessageStatus.OK:
+        return
+    elif status == MessageStatus.BAD_REQUEST:
         raise ValueError("Bad request")
-    elif status == EscVpNetMessageStatus.UNAUTHORIZED:
+    elif status == MessageStatus.UNAUTHORIZED:
         raise PermissionError("Password is required")
-    elif status == EscVpNetMessageStatus.FORBIDDEN:
+    elif status == MessageStatus.FORBIDDEN:
         raise PermissionError("Password is wrong")
-    elif status == EscVpNetMessageStatus.REQUEST_NOT_ALLOWED:
+    elif status == MessageStatus.REQUEST_NOT_ALLOWED:
         raise RuntimeError("Request is not allowed in current state")
-    elif status == EscVpNetMessageStatus.SERVICE_UNAVAILABLE:
+    elif status == MessageStatus.SERVICE_UNAVAILABLE:
         raise RuntimeError("Projector is busy")
-    elif status == EscVpNetMessageStatus.PROTOCOL_VERSION_NOT_SUPPORTED:
+    elif status == MessageStatus.PROTOCOL_VERSION_NOT_SUPPORTED:
         raise RuntimeError("Protocol version not supported")
     raise RuntimeError(f"Unknown status: {status}")
 
 
+class HelloProtocol(asyncio.DatagramProtocol):
+
+    def __init__(
+        self, connection_made: asyncio.Future, responses: dict[str, bytes]
+    ) -> None:
+        super().__init__()
+        self._connection_made = connection_made
+        self._responses = responses
+
+    def connection_made(self, _transport):
+        self._connection_made.set_result(True)
+
+    def datagram_received(self, data, addr):
+        _LOGGER.debug("received [%s]: %s", addr, data)
+        self._responses[addr[0]] = data
+
+
+@dataclass
+class ProjectorInfo:
+    ip: str
+    projector_name: str
+    im_type: int
+    command_type: CommandType
+
+
 class EscVpNet:
 
-    def __init__(self, host, port=3629):
+    def __init__(self, host, port=ESC_VPNET_PORT):
         self._host = host
         self._port = port
+
+    # Session-less mode (UDP) commands
+
+    async def hello(self, response_wait_time: float = 2) -> list[ProjectorInfo]:
+
+        responses: dict[str, bytes] = {}
+
+        # Open UDP socket for listening for reponses to HELLO message
+        loop = asyncio.get_running_loop()
+        connection_made = loop.create_future()
+
+        transport, _ = await loop.create_datagram_endpoint(
+            lambda: HelloProtocol(connection_made, responses),
+            local_addr=("0.0.0.0", ESC_VPNET_PORT),
+            reuse_port=True,
+            allow_broadcast=True,
+        )
+        await connection_made
+
+        # Send HELLO message as broadcast
+        transport.sendto(
+            EscVpNetMessage(
+                type_id=MessageType.HELLO, status=MessageStatus.REQUEST
+            ).to_bytes(),
+            ("<broadcast>", ESC_VPNET_PORT),
+        )
+
+        # Give responses some time to arrive
+        try:
+            await asyncio.sleep(response_wait_time)
+        finally:
+            transport.close()
+
+        # Decode the responses
+        # Note that the protocol will also have received the HELLO broadcast message itself
+        hello_infos = []
+        for ip_address, data in responses.items():
+            message = await EscVpNetMessage.from_bytes(data)
+            _LOGGER.debug("Received HELLO response from %s: %s", ip_address, message)
+
+            if (
+                message.type_id == MessageType.HELLO
+                and message.status == MessageStatus.OK
+            ):
+                projector_name = None
+                im_type = None
+                command_type = None
+
+                # The documentation seems to imply a fixed order,
+                # but lets be flexible just in case.
+                for header in message.headers:
+                    if isinstance(header, ProjectorNameHeader):
+                        projector_name = header.projector_name
+                    elif isinstance(header, ImTypeHeader):
+                        im_type = header.im_type
+                    elif isinstance(header, ProjectorCommandTypeHeader):
+                        command_type = header.command_type
+
+                if projector_name and im_type is not None and command_type is not None:
+                    hello_infos.append(
+                        ProjectorInfo(
+                            ip=ip_address,
+                            projector_name=projector_name,
+                            im_type=im_type,
+                            command_type=command_type,
+                        )
+                    )
+
+        return hello_infos
+
+    # Session mode (TCP) commands
 
     async def _communicate(
         self,
@@ -393,19 +546,14 @@ class EscVpNet:
                 writer.close()
                 await writer.wait_closed()
 
-    # Session-less mode commands
-
-    async def hello(self) -> str:
-        raise NotImplementedError("HELLO command is not implemented yet")
-
-    # Session mode commands
-
-    async def password(self, password: str | None = None, new_password: str | None = None) -> bool:
+    async def password(
+        self, password: str | None = None, new_password: str | None = None
+    ) -> None:
         """
         Password request/response. Allows checking and changing of password.
-        
-        When `password` is provided, it checks if the password is correct.
-        When `new_password` is provided, the password will be changed.
+
+        When only `password` is provided, it checks if the password is correct.
+        When also `new_password` is provided, the password will be changed when the current password is correct.
         """
         try:
             async with asyncio.timeout(10):
@@ -413,25 +561,25 @@ class EscVpNet:
                     host=self._host, port=self._port
                 )
 
-                headers:list[EscVpNetHeaderBase] = []
+                headers: list[HeaderBase] = []
                 if password is not None:
-                    headers.append(EscVpNetPasswordHeader(password=password))
+                    headers.append(PasswordHeader(password=password))
                 if new_password is not None:
-                    headers.append(EscVpNetNewPasswordHeader(password=new_password))
+                    headers.append(NewPasswordHeader(password=new_password))
 
                 writer.write(
                     EscVpNetMessage(
-                        type_id=EscVpNetMessageType.PASSWORD,
-                        status=EscVpNetMessageStatus.REQUEST,
-                        headers=headers
+                        type_id=MessageType.PASSWORD,
+                        status=MessageStatus.REQUEST,
+                        headers=headers,
                     ).to_bytes()
                 )
                 await writer.drain()
 
                 response_message = await EscVpNetMessage.from_stream(reader)
 
-                if response_message.status == EscVpNetMessageStatus.OK:
-                    return True
+                if response_message.status == MessageStatus.OK:
+                    return
         except asyncio.TimeoutError:
             _LOGGER.error("Timeout error while opening ESC/VP.net session")
         except ConnectionRefusedError:
@@ -444,10 +592,7 @@ class EscVpNet:
             if writer and not writer.is_closing():
                 writer.close()
 
-        return False
-
-    async def password_update(self, old_password: str, new_password: str) -> None:
-        raise NotImplementedError("Password update is not implemented yet")
+        return
 
     async def connect(self, password: str | None = None) -> EscVp21Communication:
         connected = False
@@ -461,10 +606,10 @@ class EscVpNet:
                     reader,
                     writer,
                     EscVpNetMessage(
-                        type_id=EscVpNetMessageType.CONNECT,
-                        status=EscVpNetMessageStatus.REQUEST,
+                        type_id=MessageType.CONNECT,
+                        status=MessageStatus.REQUEST,
                         headers=(
-                            [EscVpNetPasswordHeader(password=password)]
+                            [PasswordHeader(password=password)]
                             if password is not None
                             else []
                         ),
@@ -472,7 +617,7 @@ class EscVpNet:
                     close_after_response=False,
                 )
 
-                if response_message.status == EscVpNetMessageStatus.OK:
+                if response_message.status == MessageStatus.OK:
                     _LOGGER.info("ESC/VP.net session open")
                     connected = True
                     return EscVp21Communication(reader=reader, writer=writer)
@@ -497,8 +642,14 @@ class EscVpNet:
 
 if __name__ == "__main__":
 
-    async def main():
+    async def main(args):
         escvpnet = EscVpNet(host=args.host)
+
+        if args.discover:
+            responses = await escvpnet.hello()
+            print(responses)
+            return
+
         escvp21 = await escvpnet.connect("new_password")
 
         if escvp21:
@@ -513,15 +664,25 @@ if __name__ == "__main__":
             finally:
                 escvp21.close()
 
-        ok = await escvpnet.password()
-        print(f"Can connect: {ok}")
-        ok = await escvpnet.password(None, "new_password")
-        print(f"Can change password: {ok}")
+        try:
+            await escvpnet.password()
+        except Exception as e:
+            print(f"Error checking password: {e}")
+        else:
+            print("Can connect")
+
+        try:
+            await escvpnet.password("new_password", "new_password")
+        except Exception as e:
+            print(f"Error changing password: {e}")
+        else:
+            print("Password changed")
 
     import argparse
 
     parser = argparse.ArgumentParser(description="Test ESC/VP.net connection")
     parser.add_argument("host", help="IP address of the projector")
+    parser.add_argument("--discover", action="store_true", help="Discover projectors in the network using HELLO message")
     parser.add_argument(
         "--loglevel",
         help="Set the logging level. Default is INFO.",
@@ -532,4 +693,4 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=args.loglevel)
 
-    asyncio.run(main())
+    asyncio.run(main(args))
