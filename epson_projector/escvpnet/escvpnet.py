@@ -221,7 +221,7 @@ class EscVpNet:
             _LOGGER.error("Connection refused while opening ESC/VP.net session")
             raise
         except asyncio.IncompleteReadError:
-            _LOGGER.error("Connecton closed before reading complete response")
+            _LOGGER.error("Connection closed before reading complete response")
             raise
         except OSError as err:
             _LOGGER.error("Network error while opening ESC/VP.net session: %s", err)
@@ -272,7 +272,7 @@ class EscVpNet:
         except ConnectionRefusedError:
             _LOGGER.error("Connection refused while opening ESC/VP.net session")
         except asyncio.IncompleteReadError:
-            _LOGGER.error("Connecton closed before reading complete response")
+            _LOGGER.error("Connection closed before reading complete response")
         except OSError as err:
             _LOGGER.error("Network error while opening ESC/VP.net session: %s", err)
         finally:

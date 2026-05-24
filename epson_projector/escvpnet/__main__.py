@@ -37,7 +37,7 @@ async def main(args):
         print("Can connect")
 
     # try:
-    #     await escvpnet.password("new_password", "new_password")
+    #     await escvpnet.password("old_password", "new_password")
     # except Exception as e:
     #     print(f"Error changing password: {e}")
     # else:
@@ -47,7 +47,7 @@ async def main(args):
 def parse_args():
     parser = argparse.ArgumentParser(description="Test ESC/VP.net connection")
     parser.add_argument("host", help="IP address of the projector")
-    parser.add_argument("--discover", action="store_true", help="Discover projectors in the network using HELLO message")
+    parser.add_argument("--discover", action="store_true", help="Discover projectors in the network using HELLO message and exit")
     parser.add_argument(
         "--loglevel",
         help="Set the logging level. Default is INFO.",
