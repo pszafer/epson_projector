@@ -13,6 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 PROTOCOL_IDENTIFIER = b"ESC/VP.net"
 VERSION_1_0 = 0x10  # Protocol version 1.0
 
+
 @unique
 class MessageType(IntEnum):
     UNKNOWN = -1
@@ -47,25 +48,21 @@ class MessageStatus(IntEnum):
         return cls.UNKNOWN
 
 
-
-
 @dataclass
 class Message:
+    """ESC/VP.net message."""
+
     type_id: MessageType
     status: MessageStatus
     headers: list[HeaderBase] = field(default_factory=list)
 
-    """
-    ESC/VP.net message.
-    
-    10 bytes protocol name (ESC/VP.net), 
-    1 byte version, 
-    1 byte type, 
-    2 reserved bytes, 
-    1 bytes status,
-    1 byte header count
-    Followed by header count headers
-    """
+    # 10 bytes protocol name (ESC/VP.net),
+    # 1 byte version, top nibble major, bottom nibble minor,
+    # 1 byte type,
+    # 2 reserved bytes,
+    # 1 bytes status,
+    # 1 byte header count
+    # Followed by header count headers
     _FORMAT = "<10s B B H B B"
 
     @classmethod
@@ -87,6 +84,10 @@ class Message:
         version = unpacked[1]
         assert version == VERSION_1_0, f"Unsupported protocol version: {version}"
 
+        type_ = MessageType(unpacked[2])
+
+        status = MessageStatus(unpacked[4])
+
         header_count = unpacked[5]
         headers = []
 
@@ -95,13 +96,13 @@ class Message:
                 headers.append(header)
 
         return cls(
-            type_id=MessageType(unpacked[2]),
-            status=MessageStatus(unpacked[4]),
+            type_id=type_,
+            status=status,
             headers=headers,
         )
 
     def to_bytes(self) -> bytes:
-        header_count = len(self.headers) if self.headers is not None else 0
+        header_count = len(self.headers) if self.headers else 0
 
         message = struct.pack(
             self._FORMAT,

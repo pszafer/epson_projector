@@ -6,9 +6,11 @@ import struct
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import IntEnum, unique
+from typing import final
 
 
 _LOGGER = logging.getLogger(__name__)
+
 
 @unique
 class HeaderId(IntEnum):
@@ -24,6 +26,7 @@ class HeaderId(IntEnum):
     def _missing_(cls, value: object) -> HeaderId:
         _LOGGER.warning("Unknown value '%s' for %s", value, cls.__name__)
         return cls.UNKNOWN
+
 
 @dataclass
 class RawHeaderData:
@@ -56,7 +59,7 @@ class RawHeaderData:
 
 
 class HeaderBase(ABC):
-
+    @final
     @staticmethod
     def size() -> int:
         return RawHeaderData.size()
@@ -64,27 +67,19 @@ class HeaderBase(ABC):
     @classmethod
     @abstractmethod
     def id(cls) -> HeaderId:
-        raise NotImplementedError("Header id is not implemented")
+        pass
 
     @classmethod
     @abstractmethod
-    def _from_raw_header(
-        cls, raw_header: RawHeaderData
-    ) -> "HeaderBase":
-        raise NotImplementedError("Method _from_raw_header is not implemented")
+    def from_raw_header(cls, raw_header: RawHeaderData) -> "HeaderBase":
+        pass
 
     @abstractmethod
     def to_bytes(self) -> bytes:
-        raise NotImplementedError("Method to_bytes is not implemented")
-
-    @classmethod
-    async def from_stream(cls, stream: asyncio.StreamReader) -> "HeaderBase":
-        data = await stream.readexactly(RawHeaderData.size())
-        return cls._from_raw_header(RawHeaderData.from_bytes(data))
+        pass
 
 
 class PasswordHeader(HeaderBase):
-
     def __init__(self, password: str):
         self._password = password
 
@@ -93,12 +88,10 @@ class PasswordHeader(HeaderBase):
         return HeaderId.PASSWORD
 
     @classmethod
-    def _from_raw_header(
-        cls, raw_header: RawHeaderData
-    ) -> "HeaderBase":
-        assert (
-            raw_header.header_id == cls.id()
-        ), f"Unexpected header id: {raw_header.header_id}"
+    def from_raw_header(cls, raw_header: RawHeaderData) -> "HeaderBase":
+        assert raw_header.header_id == cls.id(), (
+            f"Unexpected header id: {raw_header.header_id}"
+        )
         return cls(password=raw_header.info)
 
     def to_bytes(self) -> bytes:
@@ -110,14 +103,26 @@ class PasswordHeader(HeaderBase):
 
 
 class NewPasswordHeader(PasswordHeader):
-
     @classmethod
     def id(cls) -> HeaderId:
         return HeaderId.NEW_PASSWORD
 
 
-class ProjectorNameHeader(HeaderBase):
+@unique
+class CharacterEncoding(IntEnum):
+    UNKNOWN = -1
+    NULL = 0
+    ASCII = 1
+    SHIFT_JIS = 2  # reserved
+    EUC_JP = 3  # reserved
 
+    @classmethod
+    def _missing_(cls, value: object) -> CharacterEncoding:
+        _LOGGER.warning("Unknown value '%s' for %s", value, cls.__name__)
+        return cls.UNKNOWN
+
+
+class ProjectorNameHeader(HeaderBase):
     def __init__(self, projector_name: str):
         self._projector_name = projector_name
 
@@ -130,32 +135,36 @@ class ProjectorNameHeader(HeaderBase):
         return HeaderId.PROJECTOR_NAME
 
     @classmethod
-    def _from_raw_header(
-        cls, raw_header: RawHeaderData
-    ) -> "HeaderBase":
-        assert (
-            raw_header.header_id == cls.id()
-        ), f"Unexpected header id: {raw_header.header_id}"
-        if raw_header.attribute_value > 1:
+    def from_raw_header(cls, raw_header: RawHeaderData) -> "HeaderBase":
+        assert raw_header.header_id == cls.id(), (
+            f"Unexpected header id: {raw_header.header_id}"
+        )
+
+        # Info is already decoded as ascii in RawHeaderData
+        # For now no alternative encoding support, can be added when seen in the field
+        encoding = CharacterEncoding(raw_header.attribute_value)
+        if encoding != CharacterEncoding.ASCII:
             raise NotImplementedError(
-                f"Support for text encoding: {raw_header.attribute_value} is not implemented"
+                f"Support for text encoding: {encoding.name} ({encoding.value}) is not implemented"
             )
+
         return cls(projector_name=raw_header.info)
 
     def to_bytes(self) -> bytes:
         return RawHeaderData(
             header_id=self.id(),
-            attribute_value=1 if self._projector_name else 0,
+            attribute_value=CharacterEncoding.ASCII.value
+            if self._projector_name
+            else CharacterEncoding.NULL.value,
             info=self._projector_name,
         ).to_bytes()
 
 
-# ImType is currently an int because the mapping in the documentation it is unclear
+# ImType is an int because the mapping in the documentation is unclear
 # if the values are hex or decimal. It seems decimal, but there is "0C" for Type D
 # Next to that the use of this information is unknown and the list seems out of date
-# because LS11000W returns 56 which is unmapped.
+# because LS11000W returns 56 which is unmapped. So keeping it simple.
 class ImTypeHeader(HeaderBase):
-
     def __init__(self, im_type: int):
         self._im_type = im_type
 
@@ -168,12 +177,10 @@ class ImTypeHeader(HeaderBase):
         return HeaderId.IM_TYPE
 
     @classmethod
-    def _from_raw_header(
-        cls, raw_header: RawHeaderData
-    ) -> "HeaderBase":
-        assert (
-            raw_header.header_id == cls.id()
-        ), f"Unexpected header id: {raw_header.header_id}"
+    def from_raw_header(cls, raw_header: RawHeaderData) -> "HeaderBase":
+        assert raw_header.header_id == cls.id(), (
+            f"Unexpected header id: {raw_header.header_id}"
+        )
         return cls(im_type=raw_header.attribute_value)
 
     def to_bytes(self) -> bytes:
@@ -196,11 +203,7 @@ class CommandType(IntEnum):
         return cls.UNKNOWN
 
 
-
-
-
 class ProjectorCommandTypeHeader(HeaderBase):
-
     def __init__(self, command_type: CommandType):
         self._command_type = command_type
 
@@ -213,12 +216,10 @@ class ProjectorCommandTypeHeader(HeaderBase):
         return HeaderId.PROJECTOR_COMMAND_TYPE
 
     @classmethod
-    def _from_raw_header(
-        cls, raw_header: RawHeaderData
-    ) -> HeaderBase:
-        assert (
-            raw_header.header_id == cls.id()
-        ), f"Unexpected header id: {raw_header.header_id}"
+    def from_raw_header(cls, raw_header: RawHeaderData) -> HeaderBase:
+        assert raw_header.header_id == cls.id(), (
+            f"Unexpected header id: {raw_header.header_id}"
+        )
         return cls(command_type=CommandType(raw_header.attribute_value))
 
     def to_bytes(self) -> bytes:
@@ -230,21 +231,20 @@ class ProjectorCommandTypeHeader(HeaderBase):
 
 
 class HeaderFactory:
-
     @staticmethod
     def from_bytes(data: bytes) -> HeaderBase | None:
         raw_header = RawHeaderData.from_bytes(data)
 
         if raw_header.header_id == PasswordHeader.id():
-            return PasswordHeader._from_raw_header(raw_header)
+            return PasswordHeader.from_raw_header(raw_header)
         elif raw_header.header_id == NewPasswordHeader.id():
-            return NewPasswordHeader._from_raw_header(raw_header)
+            return NewPasswordHeader.from_raw_header(raw_header)
         elif raw_header.header_id == ProjectorNameHeader.id():
-            return ProjectorNameHeader._from_raw_header(raw_header)
+            return ProjectorNameHeader.from_raw_header(raw_header)
         elif raw_header.header_id == ImTypeHeader.id():
-            return ImTypeHeader._from_raw_header(raw_header)
+            return ImTypeHeader.from_raw_header(raw_header)
         elif raw_header.header_id == ProjectorCommandTypeHeader.id():
-            return ProjectorCommandTypeHeader._from_raw_header(raw_header)
+            return ProjectorCommandTypeHeader.from_raw_header(raw_header)
 
         _LOGGER.warning("Header with id {%s} is not supported", raw_header.header_id)
         return None
@@ -253,4 +253,3 @@ class HeaderFactory:
     async def from_stream(stream: asyncio.StreamReader) -> HeaderBase | None:
         data = await stream.readexactly(RawHeaderData.size())
         return HeaderFactory.from_bytes(data)
-

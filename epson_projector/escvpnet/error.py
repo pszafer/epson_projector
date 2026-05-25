@@ -1,32 +1,45 @@
 """ESC/VP.net specific errors."""
 
+
 class EscVpNetException(Exception):
     """Base class for ESC/VP.net exceptions."""
 
 
-class BadRequestError(EscVpNetException):
-    """Bad request response."""
+class ConnectionError(EscVpNetException):
+    """
+    Connection error.
+
+    There is an issue with the connection can be a timeout, connection refused, no route to host, etc.
+    """
 
 
-class PasswordRequiredError(EscVpNetException):
-    """Password is required response."""
+class ProtocolStatusException(EscVpNetException):
+    """Parent for all protocol status exceptions."""
 
 
-class PasswordWrongError(EscVpNetException):
-    """Password is wrong response."""
+class BadRequestStatus(ProtocolStatusException):
+    """Request cannot be understood as its grammar is wrong."""
 
 
-class RequestNotAllowedError(EscVpNetException):
-    """Request is not allowed in current state response."""
+class UnauthorizedStatus(ProtocolStatusException):
+    """Password is required. (The client issues a request again with the password added.)"""
 
 
-class BusyError(EscVpNetException):
-    """Projector is busy response."""
+class ForbiddenStatus(ProtocolStatusException):
+    """Password is wrong."""
 
 
-class ProtocolVersionNotSupportedError(EscVpNetException):
-    """Protocol version not supported response."""
+class RequestNotAllowedStatus(ProtocolStatusException):
+    """Disallowed type request."""
 
 
-class UnknownStatusError(EscVpNetException):
-    """Unknown status response."""
+class ServiceUnavailableStatus(ProtocolStatusException):
+    """The projector is BUSY, etc."""
+
+
+class ProtocolVersionNotSupportedStatus(ProtocolStatusException):
+    """Unsupported version."""
+
+
+class UnknownStatus(ProtocolStatusException):
+    """Unknown status code"""
