@@ -32,7 +32,7 @@ class HeaderId(IntEnum):
 class RawHeaderData:
     header_id: HeaderId
     attribute_value: int
-    info: str
+    info: bytes  # Info is defined as STR in the spec, but for projectorname it can have different encodings, so keeping it as bytes and decode in the specific header class
 
     _FORMAT = "<B B 16s"
 
@@ -46,7 +46,9 @@ class RawHeaderData:
         return cls(
             header_id=HeaderId(unpacked[0]),
             attribute_value=unpacked[1],
-            info=unpacked[2].decode("ascii").rstrip("\x00"),
+            info=unpacked[2].rstrip(
+                b"\x00"
+            ),  # Strip trailing null bytes, here to not bother the specific header classes with that
         )
 
     def to_bytes(self) -> bytes:
@@ -54,7 +56,7 @@ class RawHeaderData:
             self._FORMAT,
             self.header_id.value,
             self.attribute_value,
-            self.info.encode("ascii"),
+            self.info,
         )
 
 
@@ -92,13 +94,13 @@ class PasswordHeader(HeaderBase):
         assert raw_header.header_id == cls.id(), (
             f"Unexpected header id: {raw_header.header_id}"
         )
-        return cls(password=raw_header.info)
+        return cls(password=raw_header.info.decode("ascii"))
 
     def to_bytes(self) -> bytes:
         return RawHeaderData(
             header_id=self.id(),
             attribute_value=1 if self._password else 0,
-            info=self._password,
+            info=self._password.encode("ascii"),
         ).to_bytes()
 
 
@@ -140,15 +142,19 @@ class ProjectorNameHeader(HeaderBase):
             f"Unexpected header id: {raw_header.header_id}"
         )
 
-        # Info is already decoded as ascii in RawHeaderData
-        # For now no alternative encoding support, can be added when seen in the field
-        encoding = CharacterEncoding(raw_header.attribute_value)
-        if encoding != CharacterEncoding.ASCII:
-            raise NotImplementedError(
-                f"Support for text encoding: {encoding.name} ({encoding.value}) is not implemented"
-            )
+        match CharacterEncoding(raw_header.attribute_value):
+            case CharacterEncoding.ASCII:
+                projector_name = raw_header.info.decode("ascii")
+            case CharacterEncoding.SHIFT_JIS:
+                projector_name = raw_header.info.decode("shift_jis")
+            case CharacterEncoding.EUC_JP:
+                projector_name = raw_header.info.decode("euc_jp")
+            case _:
+                raise NotImplementedError(
+                    f"Support for text encoding: {raw_header.attribute_value} is not implemented"
+                )
 
-        return cls(projector_name=raw_header.info)
+        return cls(projector_name)
 
     def to_bytes(self) -> bytes:
         return RawHeaderData(
@@ -156,7 +162,7 @@ class ProjectorNameHeader(HeaderBase):
             attribute_value=CharacterEncoding.ASCII.value
             if self._projector_name
             else CharacterEncoding.NULL.value,
-            info=self._projector_name,
+            info=self._projector_name.encode("ascii"),
         ).to_bytes()
 
 
@@ -187,7 +193,7 @@ class ImTypeHeader(HeaderBase):
         return RawHeaderData(
             header_id=self.id(),
             attribute_value=self._im_type,
-            info="",
+            info=b"",
         ).to_bytes()
 
 
@@ -226,7 +232,7 @@ class ProjectorCommandTypeHeader(HeaderBase):
         return RawHeaderData(
             header_id=self.id(),
             attribute_value=self._command_type.value,
-            info="",
+            info=b"",
         ).to_bytes()
 
 
