@@ -28,7 +28,7 @@ async def main(args):
         finally:
             escvp21.close()
     
-    can_connect = await escvpnet.password_valid("wrong")
+    can_connect = await escvpnet.confirm_password("wrong")
     print(f"Can connect: {can_connect}")
 
     # try:

@@ -25,6 +25,7 @@ from .error import (
     UnauthorizedStatus,
     ForbiddenStatus,
     UnknownStatus,
+    ConnectionError,
 )
 
 
@@ -34,7 +35,7 @@ COMMAND_TIMEOUT = 5
 _LOGGER = logging.getLogger(__name__)
 
 
-def verify_password(password: str | None):
+def verify_password(password: str | None) -> None:
     if password is None:
         # Password None means no password, so it is valid
         return
@@ -46,22 +47,24 @@ def verify_password(password: str | None):
         raise ValueError("Password must be ASCII")
 
 
-def raise_from_status(status: MessageStatus):
-    if status == MessageStatus.OK:
-        return
-    elif status == MessageStatus.BAD_REQUEST:
-        raise BadRequestStatus("Bad request")
-    elif status == MessageStatus.UNAUTHORIZED:
-        raise UnauthorizedStatus("Password is required")
-    elif status == MessageStatus.FORBIDDEN:
-        raise ForbiddenStatus("Password is wrong")
-    elif status == MessageStatus.REQUEST_NOT_ALLOWED:
-        raise RequestNotAllowedStatus("Request is not allowed in current state")
-    elif status == MessageStatus.SERVICE_UNAVAILABLE:
-        raise ServiceUnavailableStatus("Projector is busy")
-    elif status == MessageStatus.PROTOCOL_VERSION_NOT_SUPPORTED:
-        raise ProtocolVersionNotSupportedStatus("Protocol version not supported")
-    raise UnknownStatus(f"Unknown status: {status}")
+def raise_from_status(status: MessageStatus) -> None:
+    match status:
+        case MessageStatus.OK:
+            return
+        case MessageStatus.BAD_REQUEST:
+            raise BadRequestStatus("Bad request")
+        case MessageStatus.UNAUTHORIZED:
+            raise UnauthorizedStatus("Password is required")
+        case MessageStatus.FORBIDDEN:
+            raise ForbiddenStatus("Password is wrong")
+        case MessageStatus.REQUEST_NOT_ALLOWED:
+            raise RequestNotAllowedStatus("Request is not allowed in current state")
+        case MessageStatus.SERVICE_UNAVAILABLE:
+            raise ServiceUnavailableStatus("Projector is busy")
+        case MessageStatus.PROTOCOL_VERSION_NOT_SUPPORTED:
+            raise ProtocolVersionNotSupportedStatus("Protocol version not supported")
+        case _:
+            raise UnknownStatus(f"Unknown status: {status}")
 
 
 class HelloProtocol(asyncio.DatagramProtocol):
@@ -93,12 +96,43 @@ class ProjectorInfo:
 class EscVpNet:
     """Class for ESC/VP.net communication."""
 
-    def __init__(self, host, port=ESC_VPNET_PORT):
+    def __init__(self, host: str, port: int = ESC_VPNET_PORT) -> None:
         self._host = host
         self._port = port
         self._escvp21: EscVp21Communication | None = None
 
     # Session-less mode (UDP) commands
+
+    @staticmethod
+    def _projector_info_from_hello(
+        ip_address: str, message: Message
+    ) -> ProjectorInfo | None:
+        if message.type_id != MessageType.HELLO or message.status != MessageStatus.OK:
+            return None
+
+        projector_name: str | None = None
+        im_type: int | None = None
+        command_type: CommandType | None = None
+
+        # The documentation seems to imply a fixed order,
+        # but lets be flexible just in case.
+        for header in message.headers:
+            if isinstance(header, ProjectorNameHeader):
+                projector_name = header.projector_name
+            elif isinstance(header, ImTypeHeader):
+                im_type = header.im_type
+            elif isinstance(header, ProjectorCommandTypeHeader):
+                command_type = header.command_type
+
+        if projector_name and im_type is not None and command_type is not None:
+            return ProjectorInfo(
+                ip=ip_address,
+                projector_name=projector_name,
+                im_type=im_type,
+                command_type=command_type,
+            )
+
+        return None
 
     @staticmethod
     async def discover(response_wait_time: float = 2) -> list[ProjectorInfo]:
@@ -133,239 +167,145 @@ class EscVpNet:
 
         # Decode the responses
         # Note that the HelloProtocol will also have received the HELLO broadcast message itself
+        # But it will be ignored since it does not have the expected response status
         projector_infos = []
         for ip_address, data in responses.items():
             message = await Message.from_bytes(data)
             _LOGGER.debug("Received response from %s: %s", ip_address, message)
 
-            if (
-                message.type_id == MessageType.HELLO
-                and message.status == MessageStatus.OK
-            ):
-                projector_name = None
-                im_type = None
-                command_type = None
-
-                # The documentation seems to imply a fixed order,
-                # but lets be flexible just in case.
-                for header in message.headers:
-                    if isinstance(header, ProjectorNameHeader):
-                        projector_name = header.projector_name
-                    elif isinstance(header, ImTypeHeader):
-                        im_type = header.im_type
-                    elif isinstance(header, ProjectorCommandTypeHeader):
-                        command_type = header.command_type
-
-                if projector_name and im_type is not None and command_type is not None:
-                    projector_infos.append(
-                        ProjectorInfo(
-                            ip=ip_address,
-                            projector_name=projector_name,
-                            im_type=im_type,
-                            command_type=command_type,
-                        )
-                    )
+            projector_info = EscVpNet._projector_info_from_hello(ip_address, message)
+            if projector_info is not None:
+                projector_infos.append(projector_info)
 
         return projector_infos
 
     # Session mode (TCP) commands
 
-    async def _communicate(
-        self,
-        reader: asyncio.StreamReader,
-        writer: asyncio.StreamWriter,
-        message: Message,
-        close_after_response=True,
+    @staticmethod
+    def _build_password_request(
+        password: str | None = None,
+        new_password: str | None = None,
     ) -> Message:
-        try:
-            writer.write(message.to_bytes())
-            await writer.drain()
+        headers: list[HeaderBase] = []
+        if password is not None:
+            headers.append(PasswordHeader(password=password))
+        if new_password is not None:
+            headers.append(NewPasswordHeader(password=new_password))
 
-            response_message = await Message.from_stream(reader)
-            return response_message
+        return Message(
+            type_id=MessageType.PASSWORD,
+            status=MessageStatus.REQUEST,
+            headers=headers,
+        )
+
+    async def _request(
+        self,
+        message: Message,
+        close_after_response: bool = True,
+    ) -> tuple[Message, asyncio.StreamReader, asyncio.StreamWriter]:
+        reader: asyncio.StreamReader | None = None
+        writer: asyncio.StreamWriter | None = None
+        request_succeeded = False
+
+        try:
+            async with asyncio.timeout(COMMAND_TIMEOUT):
+                reader, writer = await asyncio.open_connection(
+                    host=self._host, port=self._port
+                )
+
+                writer.write(message.to_bytes())
+                await writer.drain()
+
+                response_message = await Message.from_stream(reader)
+                request_succeeded = True
+
+                return response_message, reader, writer
+        except (
+            asyncio.TimeoutError,
+            ConnectionRefusedError,
+            asyncio.IncompleteReadError,
+            OSError,
+        ) as e:
+            if isinstance(e, asyncio.TimeoutError):
+                error_message = "Timeout while communicating with projector"
+            elif isinstance(e, ConnectionRefusedError):
+                error_message = "Connection refused while communicating with projector"
+            elif isinstance(e, asyncio.IncompleteReadError):
+                error_message = "Connection closed before reading complete response"
+            else:
+                error_message = "Network error while communicating with projector"
+
+            raise ConnectionError(error_message) from e
         finally:
-            if close_after_response and writer and not writer.is_closing():
+            # Close on failures, and when requested.
+            if writer and (close_after_response or not request_succeeded):
                 writer.close()
                 await writer.wait_closed()
 
-    async def password_valid(self, password: str | None) -> bool:
+    async def confirm_password(self, password: str | None) -> bool:
         """
         Use PASSWORD request to check if password can be used to connect.
 
         Returns True if password is valid (or not needed if None was passed)
         """
-        reader: asyncio.StreamReader | None = None
-        writer: asyncio.StreamWriter | None = None
-
         verify_password(password)
 
-        try:
-            async with asyncio.timeout(COMMAND_TIMEOUT):
-                reader, writer = await asyncio.open_connection(
-                    host=self._host, port=self._port
-                )
+        response_message, _, _ = await self._request(
+            self._build_password_request(password=password)
+        )
 
-                headers: list[HeaderBase] = []
-                if password is not None:
-                    headers.append(PasswordHeader(password=password))
-
-                writer.write(
-                    Message(
-                        type_id=MessageType.PASSWORD,
-                        status=MessageStatus.REQUEST,
-                        headers=headers,
-                    ).to_bytes()
-                )
-                await writer.drain()
-
-                response_message = await Message.from_stream(reader)
-
-                try:
-                    raise_from_status(response_message.status)
-                except Exception:
-                    return False
-        except asyncio.TimeoutError as e:
-            raise ConnectionError("Timeout while communicating with projector") from e
-        except ConnectionRefusedError as e:
-            raise ConnectionError(
-                "Connection refused while communicating with projector"
-            ) from e
-        except asyncio.IncompleteReadError as e:
-            raise ConnectionError(
-                "Connection closed before reading complete response"
-            ) from e
-        except OSError as e:
-            raise ConnectionError(
-                "Network error while communicating with projector"
-            ) from e
-        finally:
-            if writer:
-                writer.close()
-                await writer.wait_closed()
-
-        return True
+        return response_message.status == MessageStatus.OK
 
     async def change_password(
-        self, password: str | None = None, new_password: str | None = None
+        self, old_password: str | None = None, new_password: str | None = None
     ) -> None:
         """
         Use PASSWORD request to change the password.
 
-        `password` is the old password, It must be correct or None if no password is set.
-        `new_password` is the new password to set. It can be None to remove the password.
+        `old_password`, must be correct or None if no password is set.
+        `new_password`, new password to set. It can be None to remove the password.
         """
-        reader: asyncio.StreamReader | None = None
-        writer: asyncio.StreamWriter | None = None
-
-        verify_password(password)
+        verify_password(old_password)
         verify_password(new_password)
 
-        try:
-            async with asyncio.timeout(COMMAND_TIMEOUT):
-                reader, writer = await asyncio.open_connection(
-                    host=self._host, port=self._port
-                )
+        response_message, _, _ = await self._request(
+            self._build_password_request(
+                password=old_password,
+                new_password=new_password,
+            )
+        )
 
-                headers: list[HeaderBase] = []
-                if password is not None:
-                    headers.append(PasswordHeader(password=password))
-                if new_password is not None:
-                    headers.append(NewPasswordHeader(password=new_password))
-
-                writer.write(
-                    Message(
-                        type_id=MessageType.PASSWORD,
-                        status=MessageStatus.REQUEST,
-                        headers=headers,
-                    ).to_bytes()
-                )
-                await writer.drain()
-
-                response_message = await Message.from_stream(reader)
-
-                raise_from_status(response_message.status)
-        except asyncio.TimeoutError as e:
-            raise ConnectionError("Timeout while communicating with projector") from e
-        except ConnectionRefusedError as e:
-            raise ConnectionError(
-                "Connection refused while communicating with projector"
-            ) from e
-        except asyncio.IncompleteReadError as e:
-            raise ConnectionError(
-                "Connection closed before reading complete response"
-            ) from e
-        except OSError as e:
-            raise ConnectionError(
-                "Network error while communicating with projector"
-            ) from e
-        finally:
-            if writer:
-                writer.close()
-                await writer.wait_closed()
-
-        return
+        raise_from_status(response_message.status)
 
     async def connect(self, password: str | None = None) -> EscVp21Communication:
         """Use CONNECT request to start an ESC/VP21 session"""
 
-        connected = False
-        reader: asyncio.StreamReader | None = None
-        writer: asyncio.StreamWriter | None = None
-
         verify_password(password)
 
-        try:
-            async with asyncio.timeout(COMMAND_TIMEOUT):
-                reader, writer = await asyncio.open_connection(
-                    host=self._host, port=self._port
-                )
+        response_message, reader, writer = await self._request(
+            Message(
+                type_id=MessageType.CONNECT,
+                status=MessageStatus.REQUEST,
+                headers=(
+                    [PasswordHeader(password=password)] if password is not None else []
+                ),
+            ),
+            # Need to keep open to use socket for ESC/VP21 communication on successful connection
+            close_after_response=False,  
+        )
 
-                response_message = await self._communicate(
-                    reader,
-                    writer,
-                    Message(
-                        type_id=MessageType.CONNECT,
-                        status=MessageStatus.REQUEST,
-                        headers=(
-                            [PasswordHeader(password=password)]
-                            if password is not None
-                            else []
-                        ),
-                    ),
-                    close_after_response=False,
-                )
+        if response_message.status != MessageStatus.OK:
+            # Need to close manually here since using `close_after_response=False`
+            writer.close()
+            await writer.wait_closed()
 
-                if response_message.status == MessageStatus.OK:
-                    _LOGGER.info("ESC/VP.net session open")
-                    connected = True
+            raise_from_status(response_message.status)
 
-                    # Keep a reference for keep-alive mechanism
-                    # TODO: figure out how to do that. It is a VP.net responsibility
-                    #       to keep the TCP alive, but kind of need to know if there was traffic
-                    #       on the other hand, can just send NULL commands periodically regardless of traffic
-                    self._escvp21 = EscVp21Communication(reader=reader, writer=writer)
-                    return self._escvp21
+        _LOGGER.info("ESC/VP.net session open")
 
-                raise_from_status(response_message.status)
-
-        except asyncio.TimeoutError as e:
-            raise ConnectionError("Timeout while communicating with projector") from e
-        except ConnectionRefusedError as e:
-            raise ConnectionError(
-                "Connection refused while communicating with projector"
-            ) from e
-        except asyncio.IncompleteReadError as e:
-            raise ConnectionError(
-                "Connection closed before reading complete response"
-            ) from e
-        except OSError as e:
-            raise ConnectionError(
-                "Network error while communicating with projector"
-            ) from e
-        finally:
-            if not connected and writer is not None:
-                writer.close()
-                await writer.wait_closed()
-
-        # TODO: Replace expception
-        raise RuntimeError("Failed to open ESC/VP.net session")
+        # Keep a reference for keep-alive mechanism
+        # TODO: figure out how to do that. It is a VP.net responsibility
+        #       to keep the TCP alive, but kind of need to know if there was traffic
+        #       on the other hand, can just send NULL commands periodically regardless of traffic
+        self._escvp21 = EscVp21Communication(reader=reader, writer=writer)
+        return self._escvp21
