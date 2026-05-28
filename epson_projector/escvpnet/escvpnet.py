@@ -237,7 +237,7 @@ class EscVpNet:
 
             raise ConnectionError(error_message) from e
         finally:
-            # Close on failures, and when requested.
+            # Close on failures and when requested.
             if writer and (close_after_response or not request_succeeded):
                 writer.close()
                 await writer.wait_closed()
