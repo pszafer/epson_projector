@@ -11,7 +11,7 @@ async def main(args):
     escvpnet = EscVpNet(host=args.host)
 
     if args.discover:
-        responses = await escvpnet.discover()
+        responses = await EscVpNet.discover()
         print(responses)
         return
 
@@ -25,19 +25,14 @@ async def main(args):
             print(f"SNO: {response}")
             response = await escvp21.get("LAMP")
             print(f"LAMP: {response}")
-            await escvp21.set("PWR", "OFF")
         finally:
             escvp21.close()
     
-    try:
-        await escvpnet.password_valid("wrong")
-    except Exception as e:
-        print(f"Error checking password: {e}")
-    else:
-        print("Can connect")
+    can_connect = await escvpnet.password_valid("wrong")
+    print(f"Can connect: {can_connect}")
 
     # try:
-    #     await escvpnet.password("old_password", "new_password")
+    #     await escvpnet.change_password("old_password", "new_password")
     # except Exception as e:
     #     print(f"Error changing password: {e}")
     # else:

@@ -100,7 +100,8 @@ class EscVpNet:
 
     # Session-less mode (UDP) commands
 
-    async def discover(self, response_wait_time: float = 2) -> list[ProjectorInfo]:
+    @staticmethod
+    async def discover(response_wait_time: float = 2) -> list[ProjectorInfo]:
         """Send HELLO UDP broadcast and wait for responses, returning the decoded responses."""
 
         loop = asyncio.get_running_loop()
