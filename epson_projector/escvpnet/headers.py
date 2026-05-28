@@ -14,7 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 
 @unique
 class HeaderId(IntEnum):
-    UNKNOWN = -1
+    _UNKNOWN = -1
     NULL = 0  # reserved
     PASSWORD = 1
     NEW_PASSWORD = 2
@@ -25,7 +25,7 @@ class HeaderId(IntEnum):
     @classmethod
     def _missing_(cls, value: object) -> HeaderId:
         _LOGGER.warning("Unknown value '%s' for %s", value, cls.__name__)
-        return cls.UNKNOWN
+        return cls._UNKNOWN
 
 
 @dataclass
@@ -34,6 +34,7 @@ class RawHeaderData:
     attribute_value: int
     info: bytes  # Info is defined as STR in the spec, but for projectorname it can have different encodings, so keeping it as bytes and decode in the specific header class
 
+    # The struct format is 1 byte header_id, 1 byte attribute_value, 16 bytes info
     _FORMAT = "<B B 16s"
 
     @staticmethod
@@ -112,7 +113,7 @@ class NewPasswordHeader(PasswordHeader):
 
 @unique
 class CharacterEncoding(IntEnum):
-    UNKNOWN = -1
+    _UNKNOWN = -1
     NULL = 0
     ASCII = 1
     SHIFT_JIS = 2  # reserved
@@ -121,7 +122,7 @@ class CharacterEncoding(IntEnum):
     @classmethod
     def _missing_(cls, value: object) -> CharacterEncoding:
         _LOGGER.warning("Unknown value '%s' for %s", value, cls.__name__)
-        return cls.UNKNOWN
+        return cls._UNKNOWN
 
 
 class ProjectorNameHeader(HeaderBase):
@@ -199,14 +200,14 @@ class ImTypeHeader(HeaderBase):
 
 @unique
 class CommandType(IntEnum):
-    UNKNOWN = -1
+    _UNKNOWN = -1
     ESC_VP_LEVEL_6 = 0x16  # Reserved
     ESC_VP21_V1_0 = 0x21
 
     @classmethod
     def _missing_(cls, value: object) -> CommandType:
         _LOGGER.warning("Unknown value '%s' for %s", value, cls.__name__)
-        return cls.UNKNOWN
+        return cls._UNKNOWN
 
 
 class ProjectorCommandTypeHeader(HeaderBase):

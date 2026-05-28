@@ -16,7 +16,7 @@ VERSION_1_0 = 0x10  # Protocol version 1.0
 
 @unique
 class MessageType(IntEnum):
-    UNKNOWN = -1
+    _UNKNOWN = -1
     NULL = 0  # reserved
     HELLO = 1
     PASSWORD = 2
@@ -25,12 +25,12 @@ class MessageType(IntEnum):
     @classmethod
     def _missing_(cls, value: object) -> MessageType:
         _LOGGER.warning("Unknown value '%s' for %s", value, cls.__name__)
-        return cls.UNKNOWN
+        return cls._UNKNOWN
 
 
 @unique
 class MessageStatus(IntEnum):
-    UNKNOWN = -1
+    _UNKNOWN = -1
     REQUEST = 0x00
     OK = 0x20
     BAD_REQUEST = 0x40
@@ -45,7 +45,7 @@ class MessageStatus(IntEnum):
     @classmethod
     def _missing_(cls, value: object) -> MessageStatus:
         _LOGGER.warning("Unknown value '%s' for %s", value, cls.__name__)
-        return cls.UNKNOWN
+        return cls._UNKNOWN
 
 
 @dataclass
