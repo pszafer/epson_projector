@@ -100,7 +100,7 @@ class EscVpNet:
 
     # Session-less mode (UDP) commands
 
-    async def hello(self, response_wait_time: float = 2) -> list[ProjectorInfo]:
+    async def discover(self, response_wait_time: float = 2) -> list[ProjectorInfo]:
         """Send HELLO UDP broadcast and wait for responses, returning the decoded responses."""
 
         loop = asyncio.get_running_loop()
@@ -187,14 +187,71 @@ class EscVpNet:
                 writer.close()
                 await writer.wait_closed()
 
-    async def password(
+    async def password_valid(self, password: str | None) -> bool:
+        """
+        Use PASSWORD request to check if password can be used to connect.
+
+        Returns True if password is valid (or not needed if None was passed)
+        """
+        reader: asyncio.StreamReader | None = None
+        writer: asyncio.StreamWriter | None = None
+
+        verify_password(password)
+
+        try:
+            async with asyncio.timeout(COMMAND_TIMEOUT):
+                reader, writer = await asyncio.open_connection(
+                    host=self._host, port=self._port
+                )
+
+                headers: list[HeaderBase] = []
+                if password is not None:
+                    headers.append(PasswordHeader(password=password))
+
+                writer.write(
+                    Message(
+                        type_id=MessageType.PASSWORD,
+                        status=MessageStatus.REQUEST,
+                        headers=headers,
+                    ).to_bytes()
+                )
+                await writer.drain()
+
+                response_message = await Message.from_stream(reader)
+
+                try:
+                    raise_from_status(response_message.status)
+                except Exception:
+                    return False
+        except asyncio.TimeoutError as e:
+            raise ConnectionError("Timeout while communicating with projector") from e
+        except ConnectionRefusedError as e:
+            raise ConnectionError(
+                "Connection refused while communicating with projector"
+            ) from e
+        except asyncio.IncompleteReadError as e:
+            raise ConnectionError(
+                "Connection closed before reading complete response"
+            ) from e
+        except OSError as e:
+            raise ConnectionError(
+                "Network error while communicating with projector"
+            ) from e
+        finally:
+            if writer:
+                writer.close()
+                await writer.wait_closed()
+
+        return True
+
+    async def change_password(
         self, password: str | None = None, new_password: str | None = None
     ) -> None:
         """
-        PASSWORD request/response. Allows checking and changing of password.
+        Use PASSWORD request to change the password.
 
-        When only `password` is provided, it checks if the password is correct or needed.
-        When also `new_password` is provided, the password will be changed to `new_password` (when the current password is correct).
+        `password` is the old password, It must be correct or None if no password is set.
+        `new_password` is the new password to set. It can be None to remove the password.
         """
         reader: asyncio.StreamReader | None = None
         writer: asyncio.StreamWriter | None = None
@@ -248,7 +305,7 @@ class EscVpNet:
         return
 
     async def connect(self, password: str | None = None) -> EscVp21Communication:
-        """Use CONNECT to start an ESC/VP21 session"""
+        """Use CONNECT request to start an ESC/VP21 session"""
 
         connected = False
         reader: asyncio.StreamReader | None = None
@@ -281,7 +338,7 @@ class EscVpNet:
                     _LOGGER.info("ESC/VP.net session open")
                     connected = True
 
-                    # Keep a referenced for keep-alive mechanism
+                    # Keep a reference for keep-alive mechanism
                     # TODO: figure out how to do that. It is a VP.net responsibility
                     #       to keep the TCP alive, but kind of need to know if there was traffic
                     #       on the other hand, can just send NULL commands periodically regardless of traffic
