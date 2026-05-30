@@ -21,8 +21,9 @@ class EscVp21ConnectionError(EscVp21Exception):
 class EscVp21Communication:
     """Class for ESC/VP21 communication.
 
-    Provides generic Get command and Set command methods following the naming in the ESC/VP21 spec.
-    Raises EscVp21CommandError if the projector responds with an error status for a command, and EscVp21ConnectionError for connection issues.
+    Provides generic `get` command and `set` command methods next to the option to send raw commands.
+    Raises EscVp21CommandError if the projector responds with an ERR status for a command.
+    Raises EscVp21ConnectionError for connection issues.
     Timeouts need to be handled by the caller.
     """
 
@@ -79,7 +80,7 @@ class EscVp21Communication:
     def close(self):
         """Close the underlying connection."""
         if self._writer:
-            _LOGGER.debug("Closing ESC/VP.net session")
+            _LOGGER.debug("Closing ESC/VP21 connection")
             self._writer.close()
 
     @property

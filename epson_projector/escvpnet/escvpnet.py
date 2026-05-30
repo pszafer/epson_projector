@@ -18,14 +18,14 @@ from .headers import (
 from .message import Message, MessageStatus, MessageType
 
 from .error import (
-    BadRequestStatus,
-    ServiceUnavailableStatus,
-    ProtocolVersionNotSupportedStatus,
-    RequestNotAllowedStatus,
-    UnauthorizedStatus,
-    ForbiddenStatus,
-    UnknownStatus,
-    ConnectionError,
+    EscVpNetBadRequestStatus,
+    EscVpNetServiceUnavailableStatus,
+    EscVpNetProtocolVersionNotSupportedStatus,
+    EscVpNetRequestNotAllowedStatus,
+    EscVpNetUnauthorizedStatus,
+    EscVpNetForbiddenStatus,
+    EscVpNetUnknownStatus,
+    EscVpNetConnectionError,
 )
 
 
@@ -52,19 +52,23 @@ def raise_from_status(status: MessageStatus) -> None:
         case MessageStatus.OK:
             return
         case MessageStatus.BAD_REQUEST:
-            raise BadRequestStatus("Bad request")
+            raise EscVpNetBadRequestStatus("Bad request")
         case MessageStatus.UNAUTHORIZED:
-            raise UnauthorizedStatus("Password is required")
+            raise EscVpNetUnauthorizedStatus("Password is required")
         case MessageStatus.FORBIDDEN:
-            raise ForbiddenStatus("Password is wrong")
+            raise EscVpNetForbiddenStatus("Password is wrong")
         case MessageStatus.REQUEST_NOT_ALLOWED:
-            raise RequestNotAllowedStatus("Request is not allowed in current state")
+            raise EscVpNetRequestNotAllowedStatus(
+                "Request is not allowed in current state"
+            )
         case MessageStatus.SERVICE_UNAVAILABLE:
-            raise ServiceUnavailableStatus("Projector is busy")
+            raise EscVpNetServiceUnavailableStatus("Projector is busy")
         case MessageStatus.PROTOCOL_VERSION_NOT_SUPPORTED:
-            raise ProtocolVersionNotSupportedStatus("Protocol version not supported")
+            raise EscVpNetProtocolVersionNotSupportedStatus(
+                "Protocol version not supported"
+            )
         case _:
-            raise UnknownStatus(f"Unknown status: {status}")
+            raise EscVpNetUnknownStatus(f"Unknown status: {status}")
 
 
 class HelloProtocol(asyncio.DatagramProtocol):
@@ -96,7 +100,9 @@ class ProjectorInfo:
 class EscVpNet:
     """Class for ESC/VP.net communication."""
 
-    def __init__(self, host: str, port: int = ESC_VPNET_PORT, password: str | None = None) -> None:
+    def __init__(
+        self, host: str, port: int = ESC_VPNET_PORT, password: str | None = None
+    ) -> None:
         self._host = host
         self._port = port
         self._escvp21: EscVp21Communication | None = None
@@ -249,7 +255,7 @@ class EscVpNet:
             else:
                 error_message = "Network error while communicating with projector"
 
-            raise ConnectionError(error_message) from e
+            raise EscVpNetConnectionError(error_message) from e
         finally:
             # Close on failures and when requested.
             if writer and (close_after_response or not request_succeeded):
@@ -268,9 +274,7 @@ class EscVpNet:
 
         return response_message.status == MessageStatus.OK
 
-    async def change_password(
-        self, new_password: str | None = None
-    ) -> None:
+    async def change_password(self, new_password: str | None = None) -> None:
         """
         Use PASSWORD request to change the password.
 
@@ -280,8 +284,8 @@ class EscVpNet:
 
         response_message, _, _ = await self._request(
             self._build_password_request(
-                password = self._password,
-                new_password = new_password,
+                password=self._password,
+                new_password=new_password,
             )
         )
 
@@ -295,11 +299,13 @@ class EscVpNet:
                 type_id=MessageType.CONNECT,
                 status=MessageStatus.REQUEST,
                 headers=(
-                    [PasswordHeader(password=self._password)] if self._password is not None else []
+                    [PasswordHeader(password=self._password)]
+                    if self._password is not None
+                    else []
                 ),
             ),
             # Need to keep open to use socket for ESC/VP21 communication on successful connection
-            close_after_response=False,  
+            close_after_response=False,
         )
 
         if response_message.status != MessageStatus.OK:

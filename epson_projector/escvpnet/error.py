@@ -5,7 +5,7 @@ class EscVpNetException(Exception):
     """Base class for ESC/VP.net exceptions."""
 
 
-class ConnectionError(EscVpNetException):
+class EscVpNetConnectionError(EscVpNetException):
     """
     Connection error.
 
@@ -13,33 +13,33 @@ class ConnectionError(EscVpNetException):
     """
 
 
-class ProtocolStatusException(EscVpNetException):
+class EscVpNetProtocolStatusException(EscVpNetException):
     """Parent for all protocol status exceptions."""
 
 
-class BadRequestStatus(ProtocolStatusException):
+class EscVpNetBadRequestStatus(EscVpNetProtocolStatusException):
     """Request cannot be understood as its grammar is wrong."""
 
 
-class UnauthorizedStatus(ProtocolStatusException):
+class EscVpNetUnauthorizedStatus(EscVpNetProtocolStatusException):
     """Password is required. (The client issues a request again with the password added.)"""
 
 
-class ForbiddenStatus(ProtocolStatusException):
+class EscVpNetForbiddenStatus(EscVpNetProtocolStatusException):
     """Password is wrong."""
 
 
-class RequestNotAllowedStatus(ProtocolStatusException):
+class EscVpNetRequestNotAllowedStatus(EscVpNetProtocolStatusException):
     """Disallowed type request."""
 
 
-class ServiceUnavailableStatus(ProtocolStatusException):
+class EscVpNetServiceUnavailableStatus(EscVpNetProtocolStatusException):
     """The projector is BUSY, etc."""
 
 
-class ProtocolVersionNotSupportedStatus(ProtocolStatusException):
+class EscVpNetProtocolVersionNotSupportedStatus(EscVpNetProtocolStatusException):
     """Unsupported version."""
 
 
-class UnknownStatus(ProtocolStatusException):
+class EscVpNetUnknownStatus(EscVpNetProtocolStatusException):
     """Unknown status code"""

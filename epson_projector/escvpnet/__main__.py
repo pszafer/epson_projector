@@ -6,7 +6,7 @@ import getpass
 import logging
 
 
-from .error import ForbiddenStatus, UnauthorizedStatus
+from .error import EscVpNetForbiddenStatus, EscVpNetUnauthorizedStatus
 from .escvpnet import EscVpNet
 from .escvp21_communication import EscVp21CommandError
 
@@ -43,8 +43,9 @@ ESCVPNET_COMMAND_EXTENSIONS = [
     "NWPRIMIF?",
     "NWSECUSER?",
     "NWSECPASSWD?",
-    "NWSECPSK?"
+    "NWSECPSK?",
 ]
+
 
 def _add_projector_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("host", help="IP address of the projector")
@@ -61,13 +62,13 @@ async def _connect_with_password_prompt(args: argparse.Namespace):
 
     try:
         return await escvpnet.connect()
-    except UnauthorizedStatus:
+    except EscVpNetUnauthorizedStatus:
         while True:
             password = getpass.getpass("Password: ")
             escvpnet = EscVpNet(host=args.host, port=args.port, password=password)
             try:
                 return await escvpnet.connect()
-            except ForbiddenStatus:
+            except EscVpNetForbiddenStatus:
                 print("Wrong password, try again.")
 
 
@@ -170,7 +171,7 @@ def parse_args():
     parser.add_argument(
         "--loglevel",
         help="Set the logging level. Default is INFO.",
-        default="DEBUG",
+        default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
     )
 
@@ -202,7 +203,7 @@ def parse_args():
 
     send_commands_parser = subparsers.add_parser(
         "send_commands",
-        help="Send one or more ESC/VP21 commands to the projector. Separate multiple commands with ; e.g. 'PWR?SOURCE A0;LAMP?'.",
+        help="Send one or more ESC/VP21 commands to the projector. Separate multiple commands with : e.g. 'PWR ON:SOURCE A0:LAMP?'.",
     )
     _add_projector_arguments(send_commands_parser)
     send_commands_parser.add_argument(

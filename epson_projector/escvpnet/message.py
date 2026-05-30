@@ -79,10 +79,12 @@ class Message:
         unpacked = struct.unpack(cls._FORMAT, data)
 
         protocol = unpacked[0]
-        assert protocol == PROTOCOL_IDENTIFIER, f"Unexpected protocol: {protocol}"
+        if protocol != PROTOCOL_IDENTIFIER:
+            raise ValueError(f"Unexpected protocol: {protocol!r}")
 
         version = unpacked[1]
-        assert version == VERSION_1_0, f"Unsupported protocol version: {version}"
+        if version != VERSION_1_0:
+            raise ValueError(f"Unsupported protocol version: {version}")
 
         type_ = MessageType(unpacked[2])
 

@@ -6,29 +6,27 @@ https://www.epson.com.au/d/pub/epson/techtips/escvp.netmanual_e_f.pdf
 from __future__ import annotations
 
 from .error import (
-    BadRequestStatus,
-    ServiceUnavailableStatus,
+    EscVpNetBadRequestStatus,
+    EscVpNetServiceUnavailableStatus,
     EscVpNetException,
-    ProtocolVersionNotSupportedStatus,
-    RequestNotAllowedStatus,
-    UnauthorizedStatus,
-    ForbiddenStatus,
-    UnknownStatus,
+    EscVpNetProtocolVersionNotSupportedStatus,
+    EscVpNetRequestNotAllowedStatus,
+    EscVpNetUnauthorizedStatus,
+    EscVpNetForbiddenStatus,
+    EscVpNetUnknownStatus,
 )
 from .escvp21_communication import EscVp21Communication
 from .escvpnet import EscVpNet
 
 __all__ = [
-    "BadRequestStatus",
-    "ServiceUnavailableStatus",
+    "EscVpNetBadRequestStatus",
+    "EscVpNetServiceUnavailableStatus",
     "EscVpNet",
     "EscVp21Communication",
     "EscVpNetException",
-    "BadRequestStatus",
-    "ServiceUnavailableStatus",
-    "UnauthorizedStatus",
-    "ForbiddenStatus",
-    "ProtocolVersionNotSupportedStatus",
-    "RequestNotAllowedStatus",
-    "UnknownStatus",
+    "EscVpNetUnauthorizedStatus",
+    "EscVpNetForbiddenStatus",
+    "EscVpNetProtocolVersionNotSupportedStatus",
+    "EscVpNetRequestNotAllowedStatus",
+    "EscVpNetUnknownStatus",
 ]
