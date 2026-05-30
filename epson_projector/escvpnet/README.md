@@ -41,7 +41,6 @@ async with EscVpNet(host="192.168.1.123", password="password") as client:
     await escvp21.set("PWR", "ON")
 ```
 
-
 ## Command-Line Usage
 
 You can execute the module directly for manual experimentation. It allows to discover projectors, send commands and more. It will prompt for password when one is required. Use the `--help` commandline option for available commands and `command --help` for the command parameters.
@@ -50,5 +49,6 @@ Examples:
 
 ```bash
 python -m epson_projector.escvpnet discover
-python -m epson_projector.escvpnet send_commands 192.168.1.100 PWR?:SOURCE 30:LAMP?
+python -m epson_projector.escvpnet send_commands 192.168.1.100 PWR?
+python -m epson_projector.escvpnet send_commands 192.168.1.100 PWR ON:LAMP?:SOURCE 30
 ```

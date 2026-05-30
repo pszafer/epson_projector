@@ -56,7 +56,7 @@ def _add_projector_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-async def _connect_with_prompt(args: argparse.Namespace):
+async def _connect_with_password_prompt(args: argparse.Namespace):
     escvpnet = EscVpNet(host=args.host, port=args.port)
 
     try:
@@ -77,7 +77,7 @@ async def _command_discover(_args: argparse.Namespace) -> None:
 
 
 async def _command_read_basic(args: argparse.Namespace) -> None:
-    escvp21 = await _connect_with_prompt(args)
+    escvp21 = await _connect_with_password_prompt(args)
 
     try:
         for command in ("PWR", "SNO", "LAMP"):
@@ -90,8 +90,8 @@ async def _command_read_basic(args: argparse.Namespace) -> None:
 async def _command_confirm_password(args: argparse.Namespace) -> None:
     password = getpass.getpass("Password: ")
     escvpnet = EscVpNet(host=args.host, port=args.port, password=password)
-    can_connect = await escvpnet.confirm_password()
-    print(f"Can connect: {can_connect}")
+    ok = await escvpnet.confirm_password()
+    print(f"Password correct: {ok}")
 
 
 async def _command_change_password(args: argparse.Namespace) -> None:
@@ -103,7 +103,7 @@ async def _command_change_password(args: argparse.Namespace) -> None:
 
 
 async def _command_send_commands(args: argparse.Namespace) -> None:
-    escvp21 = await _connect_with_prompt(args)
+    escvp21 = await _connect_with_password_prompt(args)
 
     try:
         commands = " ".join(args.commands).split(":")
@@ -123,7 +123,7 @@ async def _command_send_commands(args: argparse.Namespace) -> None:
 
 
 async def _command_read_escvpnet_extensions(args: argparse.Namespace) -> None:
-    escvp21 = await _connect_with_prompt(args)
+    escvp21 = await _connect_with_password_prompt(args)
 
     try:
         for command in ESCVPNET_COMMAND_EXTENSIONS:
