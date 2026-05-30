@@ -96,10 +96,24 @@ class ProjectorInfo:
 class EscVpNet:
     """Class for ESC/VP.net communication."""
 
-    def __init__(self, host: str, port: int = ESC_VPNET_PORT) -> None:
+    def __init__(self, host: str, port: int = ESC_VPNET_PORT, password: str | None = None) -> None:
         self._host = host
         self._port = port
         self._escvp21: EscVp21Communication | None = None
+
+        verify_password(password)
+        self._password = password
+
+    async def __aenter__(self) -> EscVp21Communication:
+        """Async context manager entry: connect and return EscVp21Communication."""
+        self._escvp21 = await self.connect()
+        return self._escvp21
+
+    async def __aexit__(self, exc_type, exc, tb):
+        """Async context manager exit: close the connection if open."""
+        if self._escvp21 is not None:
+            self._escvp21.close()
+            self._escvp21 = None
 
     # Session-less mode (UDP) commands
 
@@ -242,52 +256,46 @@ class EscVpNet:
                 writer.close()
                 await writer.wait_closed()
 
-    async def confirm_password(self, password: str | None) -> bool:
+    async def confirm_password(self) -> bool:
         """
         Use PASSWORD request to check if password can be used to connect.
 
         Returns True if password is valid (or not needed if None was passed)
         """
-        verify_password(password)
-
         response_message, _, _ = await self._request(
-            self._build_password_request(password=password)
+            self._build_password_request(password=self._password)
         )
 
         return response_message.status == MessageStatus.OK
 
     async def change_password(
-        self, old_password: str | None = None, new_password: str | None = None
+        self, new_password: str | None = None
     ) -> None:
         """
         Use PASSWORD request to change the password.
 
-        `old_password`, must be correct or None if no password is set.
         `new_password`, new password to set. It can be None to remove the password.
         """
-        verify_password(old_password)
         verify_password(new_password)
 
         response_message, _, _ = await self._request(
             self._build_password_request(
-                password=old_password,
-                new_password=new_password,
+                password = self._password,
+                new_password = new_password,
             )
         )
 
         raise_from_status(response_message.status)
 
-    async def connect(self, password: str | None = None) -> EscVp21Communication:
+    async def connect(self) -> EscVp21Communication:
         """Use CONNECT request to start an ESC/VP21 session"""
-
-        verify_password(password)
 
         response_message, reader, writer = await self._request(
             Message(
                 type_id=MessageType.CONNECT,
                 status=MessageStatus.REQUEST,
                 headers=(
-                    [PasswordHeader(password=password)] if password is not None else []
+                    [PasswordHeader(password=self._password)] if self._password is not None else []
                 ),
             ),
             # Need to keep open to use socket for ESC/VP21 communication on successful connection
@@ -301,11 +309,6 @@ class EscVpNet:
 
             raise_from_status(response_message.status)
 
-        _LOGGER.info("ESC/VP.net session open")
+        _LOGGER.debug("ESC/VP.net session open")
 
-        # Keep a reference for keep-alive mechanism
-        # TODO: figure out how to do that. It is a VP.net responsibility
-        #       to keep the TCP alive, but kind of need to know if there was traffic
-        #       on the other hand, can just send NULL commands periodically regardless of traffic
-        self._escvp21 = EscVp21Communication(reader=reader, writer=writer)
-        return self._escvp21
+        return EscVp21Communication(reader=reader, writer=writer)
