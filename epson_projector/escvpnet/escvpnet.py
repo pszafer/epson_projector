@@ -4,8 +4,6 @@ import asyncio
 from dataclasses import dataclass
 import logging
 
-from .escvp21_communication import EscVp21Communication
-
 from .headers import (
     CommandType,
     HeaderBase,
@@ -105,21 +103,9 @@ class EscVpNet:
     ) -> None:
         self._host = host
         self._port = port
-        self._escvp21: EscVp21Communication | None = None
 
         verify_password(password)
         self._password = password
-
-    async def __aenter__(self) -> EscVp21Communication:
-        """Async context manager entry: connect and return EscVp21Communication."""
-        self._escvp21 = await self.connect()
-        return self._escvp21
-
-    async def __aexit__(self, exc_type, exc, tb):
-        """Async context manager exit: close the connection if open."""
-        if self._escvp21 is not None:
-            self._escvp21.close()
-            self._escvp21 = None
 
     # Session-less mode (UDP) commands
 
@@ -223,8 +209,8 @@ class EscVpNet:
         message: Message,
         close_after_response: bool = True,
     ) -> tuple[Message, asyncio.StreamReader, asyncio.StreamWriter]:
-        reader: asyncio.StreamReader | None = None
-        writer: asyncio.StreamWriter | None = None
+        reader = None
+        writer = None
         request_succeeded = False
 
         try:
@@ -291,7 +277,7 @@ class EscVpNet:
 
         raise_from_status(response_message.status)
 
-    async def connect(self) -> EscVp21Communication:
+    async def connect(self) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
         """Use CONNECT request to start an ESC/VP21 session"""
 
         response_message, reader, writer = await self._request(
@@ -317,4 +303,4 @@ class EscVpNet:
 
         _LOGGER.debug("ESC/VP.net session open")
 
-        return EscVp21Communication(reader=reader, writer=writer)
+        return (reader, writer)

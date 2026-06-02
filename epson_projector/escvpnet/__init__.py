@@ -15,14 +15,12 @@ from .error import (
     EscVpNetForbiddenStatus,
     EscVpNetUnknownStatus,
 )
-from .escvp21_communication import EscVp21Communication
 from .escvpnet import EscVpNet
 
 __all__ = [
     "EscVpNetBadRequestStatus",
     "EscVpNetServiceUnavailableStatus",
     "EscVpNet",
-    "EscVp21Communication",
     "EscVpNetException",
     "EscVpNetUnauthorizedStatus",
     "EscVpNetForbiddenStatus",

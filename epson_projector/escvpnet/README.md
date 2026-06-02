@@ -24,28 +24,22 @@ print(discovered_projector_info_list)
 
 ### Basic usage
 
-Note that `connect()` returns an EscVp21Communication instance.
+Note that `connect()` returns an reader/writer pair similar to `asyncio.open_connection`.
 
 ```python
 from epson_projector.escvpnet.escvpnet import EscvpNet
 
 escvpnet_client = EscVpNet(host="192.168.1.123", password="password")
-escvp21_client await client.connect()
+reader, writer await client.connect()
 
-print(await escvp21_client.get("LAMP"))
-await escvp21_client.set("PWR", "ON")
-```
+# Reader, writer can be used to send ESC/VP21 commands
+command = "PWR?"
 
-### Using contextmanager
+writer.write(command.encode("ascii"))
+await writer.drain()
 
-Note tha the contextmanager returns an EscVp21Communication instance.
-
-```python
-from epson_projector.escvpnet.escvpnet import EscvpNet
-
-async with EscVpNet(host="192.168.1.123", password="password") as escvp21_client:
-    print(await escvp21_client.get("LAMP"))
-    await escvp21_client.set("PWR", "ON")
+response = await self._reader.readuntil(b":")
+print(response.decode("ascii"))
 ```
 
 ## Command-Line Usage

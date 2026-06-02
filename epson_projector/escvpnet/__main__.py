@@ -8,7 +8,6 @@ import logging
 
 from .error import EscVpNetForbiddenStatus, EscVpNetUnauthorizedStatus
 from .escvpnet import EscVpNet
-from .escvp21_communication import EscVp21CommandError
 
 ESCVPNET_COMMAND_EXTENSIONS = [
     "NWTRAPIP1?",
@@ -46,6 +45,70 @@ ESCVPNET_COMMAND_EXTENSIONS = [
     "NWSECPSK?",
 ]
 
+class EscVp21CommandError(Exception):
+    """Raised when there is a command error during ESC/VP21 communication."""
+
+class EscVp21Communication:
+    """Helper class for ESC/VP21 communication.
+
+    Provides generic `get` command and `set` command methods next to the option to send raw commands.
+    Raises EscVp21CommandError if the projector responds with an ERR status for a command.
+    """
+
+    def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        self._reader = reader
+        self._writer = writer
+
+    async def raw_command(self, command: str) -> str:
+        """Send a raw command and return the response string. Raises local exceptions on connection errors."""
+        command += "\r"
+        try:
+            payload = command.encode("ascii")
+            logging.debug("Send: %s", payload)
+            self._writer.write(payload)
+            await self._writer.drain()
+
+            raw_response = await self._reader.readuntil(b":")
+            logging.debug("Recv: %s", raw_response.strip())
+
+            response = raw_response[:-1].decode("ascii")  # remove trailing colon
+            return response.rstrip("\r")
+        except (asyncio.IncompleteReadError, asyncio.LimitOverrunError) as e:
+            raise Exception("Connection lost or protocol error during read") from e
+        except (
+            ConnectionResetError,
+            BrokenPipeError,
+            ConnectionAbortedError,
+            OSError,
+        ) as e:
+            raise Exception("Connection error during communication") from e
+
+    async def get(self, command: str) -> str:
+        """Get property value from projector."""
+        response = await self.raw_command(command + "?")
+
+        # Extract the value part of the response, e.g. "01" for "PWR? -> PWR=01"
+        if (parts := response.split("=", 1)) and len(parts) == 2:
+            return parts[1]
+
+        raise EscVp21CommandError(
+            f"Command '{command}' failed with response: {response}"
+        )
+
+    async def set(self, command: str, value: str) -> None:
+        """Set property value on projector and return the raw response."""
+        response = await self.raw_command(f"{command} {value}")
+        if response:
+            raise EscVp21CommandError(
+                f"Command '{command}={value}' failed with response: {response}"
+            )
+
+    def close(self):
+        """Close the underlying connection."""
+        if self._writer:
+            logging.debug("Closing ESC/VP21 connection")
+            self._writer.close()
+
 
 def _add_projector_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("host", help="IP address of the projector")
@@ -57,19 +120,18 @@ def _add_projector_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-async def _connect_with_password_prompt(args: argparse.Namespace):
-    escvpnet = EscVpNet(host=args.host, port=args.port)
+async def _connect_with_password_prompt(args: argparse.Namespace) -> EscVp21Communication:
+    password = None
 
-    try:
-        return await escvpnet.connect()
-    except EscVpNetUnauthorizedStatus:
-        while True:
-            password = getpass.getpass("Password: ")
+    while True:
+        try:
             escvpnet = EscVpNet(host=args.host, port=args.port, password=password)
-            try:
-                return await escvpnet.connect()
-            except EscVpNetForbiddenStatus:
-                print("Wrong password, try again.")
+            reader, writer = await escvpnet.connect()
+            return EscVp21Communication(reader=reader, writer=writer)
+        except EscVpNetUnauthorizedStatus:
+            password = getpass.getpass("Password required: ")
+        except EscVpNetForbiddenStatus:
+            password = getpass.getpass("Wrong password, try again: ")
 
 
 async def _command_discover(_args: argparse.Namespace) -> None:
