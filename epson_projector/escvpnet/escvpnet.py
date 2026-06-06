@@ -260,11 +260,11 @@ class EscVpNet:
 
         return response_message.status == MessageStatus.OK
 
-    async def change_password(self, new_password: str | None = None) -> None:
+    async def change_password(self, new_password: str) -> None:
         """
         Use PASSWORD request to change the password.
 
-        `new_password`, new password to set. It can be None to remove the password.
+        `new_password`, new password to set. Use empty string to remove the password.
         """
         verify_password(new_password)
 
