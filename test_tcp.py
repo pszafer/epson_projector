@@ -16,10 +16,10 @@ async def main_tcp(args):
     projector = epson.Projector(host=args.host, type='tcp', tcp_password=password)
 
     data = await projector.get_power()
-    print(data)
+    print("Power:", data)
 
     data = await projector.get_property(VOLUME)
-    print("VOL @", data)
+    print("VOL:", data)
 
     data = await projector.get_serial_number()
     print("Serialnumber:", data)
