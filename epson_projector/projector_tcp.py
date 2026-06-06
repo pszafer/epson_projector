@@ -20,7 +20,6 @@ from .const import (
     EPSON_CODES,
     POWER,
     SERIAL_BYTE,
-    SNO,
     TCP_SERIAL_PORT,
 )
 from .timeout import get_timeout
@@ -110,16 +109,6 @@ class ProjectorTcp(BaseProjectorConnection):
     async def get_serial_number(self) -> str | None:
         """Send TCP request for serial number to Epson."""
         if not self._serial:
-            try:
-                response = await self.get_property(SNO, DEFAULT_TIMEOUT)
-                if response and response != BUSY:
-                    self._serial = response
-                    return self._serial
-            except asyncio.TimeoutError:
-                _LOGGER.info(
-                    "Timeout error receiving SERIAL of projector with SNO?, trying fallback method."
-                )
-
             try:
                 async with asyncio.timeout(10):
                     power_on = await self.get_property(POWER, get_timeout(POWER))
