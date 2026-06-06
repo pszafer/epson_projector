@@ -6,6 +6,7 @@ import asyncio
 from epson_projector.error import ProjectorUnavailableError, UnauthorizedError
 from epson_projector.escvpnet.error import EscVpNetConnectionError, EscVpNetForbiddenStatus, EscVpNetUnauthorizedStatus
 from epson_projector.escvpnet.escvpnet import EscVpNet
+from epson_projector.projector_serial import DEFAULT_TIMEOUT
 
 from .base_connection import BaseProjectorConnection
 from .const import (
@@ -17,6 +18,7 @@ from .const import (
     EPSON_CODES,
     POWER,
     SERIAL_BYTE,
+    SNO,
     TCP_SERIAL_PORT,
 )
 from .timeout import get_timeout
@@ -105,6 +107,16 @@ class ProjectorTcp(BaseProjectorConnection):
     async def get_serial_number(self):
         """Send TCP request for serial number to Epson."""
         if not self._serial:
+            try:
+                response = await self.get_property(SNO, DEFAULT_TIMEOUT)
+                if response:
+                    self._serial = response
+                    return self._serial
+            except asyncio.TimeoutError:
+                _LOGGER.info(
+                    "Timeout error receiving SERIAL of projector with SNO?, trying fallback method."
+                )
+
             try:
                 async with asyncio.timeout(10):
                     power_on = await self.get_property(POWER, get_timeout(POWER))
