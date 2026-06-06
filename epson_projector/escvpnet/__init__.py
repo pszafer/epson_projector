@@ -1,5 +1,5 @@
 """
-ESC/VP.net protocol implementation based on the document found here:
+ESC/VP.net protocol implementation based on the Epson documentation found here:
 https://www.epson.com.au/d/pub/epson/techtips/escvp.netmanual_e_f.pdf
 """
 
