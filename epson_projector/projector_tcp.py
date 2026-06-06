@@ -3,11 +3,13 @@ import logging
 
 import asyncio
 
+from epson_projector.error import ProjectorUnavailableError, UnauthorizedError
+from epson_projector.escvpnet.error import EscVpNetConnectionError, EscVpNetForbiddenStatus, EscVpNetUnauthorizedStatus
+from epson_projector.escvpnet.escvpnet import EscVpNet
+
 from .base_connection import BaseProjectorConnection
 from .const import (
     BUSY,
-    ESCVPNET_HELLO_COMMAND,
-    ESCVPNETNAME,
     ERROR,
     CR,
     CR_COLON,
@@ -27,15 +29,17 @@ class ProjectorTcp(BaseProjectorConnection):
     Epson TCP connector
     """
 
-    def __init__(self, host, port=3629):
+    def __init__(self, host, port=3629, password=None):
         """
         Epson TCP connector
 
         :param str host:    IP address of Projector
         :param int port:    Port to connect to. Default 3629.
+        :param str password: Password for the projector. Default None.
         """
         self._host = host
         self._port = port
+        self._password = password
         self._isOpen = False
         self._serial = None
 
@@ -43,24 +47,16 @@ class ProjectorTcp(BaseProjectorConnection):
         """Async init to open connection with projector."""
         try:
             async with asyncio.timeout(10):
-                self._reader, self._writer = await asyncio.open_connection(
-                    host=self._host, port=self._port
-                )
-                self._writer.write(ESCVPNET_HELLO_COMMAND.encode())
-                await self._writer.drain()
-                response = await self._reader.read(16)
-                if response[0:10].decode() == ESCVPNETNAME and response[14] == 32:
-                    self._isOpen = True
-                    _LOGGER.info("Connection open")
-                    return
-                else:
-                    _LOGGER.info("Cannot open connection to Epson")
+                escvpnet = EscVpNet(host=self._host, port=self._port, password=self._password)
+                self._reader, self._writer = await escvpnet.connect()
+                self._isOpen = True
+                _LOGGER.info("Connection open")
         except asyncio.TimeoutError:
             _LOGGER.error("Timeout error")
-        except ConnectionRefusedError:
-            _LOGGER.error("Connection refused Error")
-        except OSError as err:
-            _LOGGER.error("No route to host? %s", err)
+        except (EscVpNetUnauthorizedStatus, EscVpNetForbiddenStatus) as e:
+            raise UnauthorizedError("Password is incorrect or not provided.") from e
+        except EscVpNetConnectionError as e:
+            raise ProjectorUnavailableError("Connection error") from e
 
     def close(self):
         if self._isOpen:
