@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from contextlib import asynccontextmanager
 import getpass
 import logging
 
@@ -45,13 +46,15 @@ ESCVPNET_COMMAND_EXTENSIONS = [
     "NWSECPSK?",
 ]
 
+
 class EscVp21CommandError(Exception):
     """Raised when there is a command error during ESC/VP21 communication."""
+
 
 class EscVp21Communication:
     """Helper class for ESC/VP21 communication.
 
-    Provides generic `get` command and `set` command methods next to the option to send raw commands.
+    Provides a very crude implementation to send commands.
     Raises EscVp21CommandError if the projector responds with an ERR status for a command.
     """
 
@@ -68,6 +71,9 @@ class EscVp21Communication:
             self._writer.write(payload)
             await self._writer.drain()
 
+            # This approach does not take receiving of IMEVENT messages into account
+            # These can come at any time and would break the assumption that this respose
+            # is for the command that was just sent.
             raw_response = await self._reader.readuntil(b":")
             logging.debug("Recv: %s", raw_response.strip())
 
@@ -83,31 +89,20 @@ class EscVp21Communication:
         ) as e:
             raise Exception("Connection error during communication") from e
 
-    async def get(self, command: str) -> str:
-        """Get property value from projector."""
-        response = await self.raw_command(command + "?")
-
-        # Extract the value part of the response, e.g. "01" for "PWR? -> PWR=01"
-        if (parts := response.split("=", 1)) and len(parts) == 2:
-            return parts[1]
-
-        raise EscVp21CommandError(
-            f"Command '{command}' failed with response: {response}"
-        )
-
-    async def set(self, command: str, value: str) -> None:
-        """Set property value on projector and return the raw response."""
-        response = await self.raw_command(f"{command} {value}")
-        if response:
-            raise EscVp21CommandError(
-                f"Command '{command}={value}' failed with response: {response}"
-            )
-
     def close(self):
         """Close the underlying connection."""
         if self._writer:
             logging.debug("Closing ESC/VP21 connection")
             self._writer.close()
+
+
+@asynccontextmanager
+async def connect_escvp21(args):
+    escvp21 = await _connect_with_password_prompt(args)
+    try:
+        yield escvp21
+    finally:
+        escvp21.close()
 
 
 def _add_projector_arguments(parser: argparse.ArgumentParser) -> None:
@@ -120,7 +115,9 @@ def _add_projector_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-async def _connect_with_password_prompt(args: argparse.Namespace) -> EscVp21Communication:
+async def _connect_with_password_prompt(
+    args: argparse.Namespace,
+) -> EscVp21Communication:
     password = None
 
     while True:
@@ -134,20 +131,20 @@ async def _connect_with_password_prompt(args: argparse.Namespace) -> EscVp21Comm
             password = getpass.getpass("Wrong password, try again: ")
 
 
+async def _send_commands_and_print_response(
+    escvp21: EscVp21Communication, commands: list[str]
+) -> None:
+    for command in commands:
+        try:
+            response = await escvp21.raw_command(command)
+            print(f"{command} -> {response}")
+        except EscVp21CommandError as e:
+            print(f"{command} -> Error: {e}")
+
+
 async def _command_discover(_args: argparse.Namespace) -> None:
     responses = await EscVpNet.discover()
     print(responses)
-
-
-async def _command_read_basic(args: argparse.Namespace) -> None:
-    escvp21 = await _connect_with_password_prompt(args)
-
-    try:
-        for command in ("PWR", "SNO", "LAMP"):
-            response = await escvp21.get(command)
-            print(f"{command}: {response}")
-    finally:
-        escvp21.close()
 
 
 async def _command_confirm_password(args: argparse.Namespace) -> None:
@@ -165,48 +162,26 @@ async def _command_change_password(args: argparse.Namespace) -> None:
     print("Password changed")
 
 
-async def _command_send_commands(args: argparse.Namespace) -> None:
-    escvp21 = await _connect_with_password_prompt(args)
+async def _command_read_basic(args: argparse.Namespace) -> None:
+    async with connect_escvp21(args) as escvp21:
+        await _send_commands_and_print_response(escvp21, ["PWR?", "SNO?", "LAMP?"])
 
-    try:
+
+async def _command_send_commands(args: argparse.Namespace) -> None:
+    async with connect_escvp21(args) as escvp21:
         commands = " ".join(args.commands).split(":")
-        for command in commands:
-            try:
-                if command.endswith("?"):
-                    response = await escvp21.get(command.rstrip("?"))
-                    print(f"{command} -> {response}")
-                else:
-                    parts = command.split(" ", 1)
-                    await escvp21.set(parts[0], parts[1])
-                    print(f"{command}, Acked")
-            except EscVp21CommandError as e:
-                print(f"{command} -> Error: {e}")
-    finally:
-        escvp21.close()
+        await _send_commands_and_print_response(escvp21, commands)
 
 
 async def _command_read_escvpnet_extensions(args: argparse.Namespace) -> None:
-    escvp21 = await _connect_with_password_prompt(args)
-
-    try:
-        for command in ESCVPNET_COMMAND_EXTENSIONS:
-            try:
-                response = await escvp21.get(command.rstrip("?"))
-                print(f"{command} -> {response}")
-            except EscVp21CommandError as e:
-                print(f"{command} -> Error: {e}")
-    finally:
-        escvp21.close()
+    async with connect_escvp21(args) as escvp21:
+        await _send_commands_and_print_response(escvp21, ESCVPNET_COMMAND_EXTENSIONS)
 
 
 async def main(args):
     if args.command == "discover":
         responses = await EscVpNet.discover()
         print(responses)
-        return
-
-    if args.command == "read_basic":
-        await _command_read_basic(args)
         return
 
     if args.command == "confirm_password":
@@ -217,12 +192,16 @@ async def main(args):
         await _command_change_password(args)
         return
 
-    if args.command == "send_commands":
-        await _command_send_commands(args)
+    if args.command == "read_basic":
+        await _command_read_basic(args)
         return
 
     if args.command == "read_escvpnet_extensions":
         await _command_read_escvpnet_extensions(args)
+        return
+
+    if args.command == "send_commands":
+        await _command_send_commands(args)
         return
 
     raise ValueError(f"Unknown command: {args.command}")
@@ -245,12 +224,6 @@ def parse_args():
     )
     discover_parser.set_defaults(handler=_command_discover)
 
-    read_basic_parser = subparsers.add_parser(
-        "read_basic",
-        help="Read PWR, SNO and LAMP values",
-    )
-    _add_projector_arguments(read_basic_parser)
-
     confirm_password_parser = subparsers.add_parser(
         "confirm_password",
         help="Check if a password can be used to connect to the projector",
@@ -263,6 +236,18 @@ def parse_args():
     )
     _add_projector_arguments(change_password_parser)
 
+    read_basic_parser = subparsers.add_parser(
+        "read_basic",
+        help="Read PWR, SNO and LAMP values",
+    )
+    _add_projector_arguments(read_basic_parser)
+
+    read_escvpnet_extensions_parser = subparsers.add_parser(
+        "read_escvpnet_extensions",
+        help="Read all known ESC/VP.net extension commands from the projector.",
+    )
+    _add_projector_arguments(read_escvpnet_extensions_parser)
+
     send_commands_parser = subparsers.add_parser(
         "send_commands",
         help="Send one or more ESC/VP21 commands to the projector. Separate multiple commands with : e.g. 'PWR ON:SOURCE A0:LAMP?'.",
@@ -273,12 +258,6 @@ def parse_args():
         nargs="+",
         help="Commands to send. Use 'PWR?' for a read or quote a write like 'PWR ON'.",
     )
-
-    read_escvpnet_extensions_parser = subparsers.add_parser(
-        "read_escvpnet_extensions",
-        help="Read all known ESC/VP.net extension commands from the projector.",
-    )
-    _add_projector_arguments(read_escvpnet_extensions_parser)
 
     return parser.parse_args()
 
