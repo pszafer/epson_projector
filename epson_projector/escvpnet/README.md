@@ -8,7 +8,7 @@ This package exposes following features of ESC/VP.net protocol:
 * Use CONNECT message to allow sending of ESC/VP21 commands
 * Use PASSWORD message to check and change password
 
-ESC/VP.net protocol implementation based on the document found here:
+ESC/VP.net protocol implementation based on EPSON documentation found here:
 https://www.epson.com.au/d/pub/epson/techtips/escvp.netmanual_e_f.pdf
 
 ## Usage
@@ -30,7 +30,7 @@ Note that `connect()` returns an reader/writer pair similar to `asyncio.open_con
 from epson_projector.escvpnet.escvpnet import EscvpNet
 
 escvpnet_client = EscVpNet(host="192.168.1.123", password="password")
-reader, writer await client.connect()
+reader, writer await escvpnet_client.connect()
 
 # Reader, writer can be used to send ESC/VP21 commands
 command = "PWR?"
@@ -51,5 +51,5 @@ Examples:
 ```bash
 python -m epson_projector.escvpnet discover
 python -m epson_projector.escvpnet send_commands 192.168.1.100 PWR?
-python -m epson_projector.escvpnet send_commands 192.168.1.100 PWR ON:LAMP?:SOURCE 30
+python -m epson_projector.escvpnet send_commands 192.168.1.100 LAMP?:SOURCE 30
 ```
