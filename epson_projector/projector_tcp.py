@@ -35,8 +35,8 @@ class ProjectorTcp(BaseProjectorConnection):
         """
         Epson TCP connector
 
-        :param str host:    IP address of Projector
-        :param int port:    Port to connect to. Default 3629.
+        :param str host:     IP address of Projector
+        :param int port:     Port to connect to. Default 3629.
         :param str password: Password for the projector. Default None.
         """
         self._host = host
