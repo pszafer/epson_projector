@@ -1,4 +1,6 @@
 """TCP connection of Epson projector module."""
+from __future__ import annotations
+
 import logging
 
 import asyncio
@@ -45,7 +47,7 @@ class ProjectorTcp(BaseProjectorConnection):
         self._isOpen = False
         self._serial = None
 
-    async def async_init(self):
+    async def async_init(self) -> None:
         """Async init to open connection with projector."""
         try:
             async with asyncio.timeout(10):
@@ -60,11 +62,11 @@ class ProjectorTcp(BaseProjectorConnection):
         except EscVpNetConnectionError as e:
             raise ProjectorUnavailableError("Connection error") from e
 
-    def close(self):
+    def close(self) -> None:
         if self._isOpen:
             self._writer.close()
 
-    async def get_property(self, command, timeout, bytes_to_read=16):
+    async def get_property(self, command, timeout, bytes_to_read=16) -> str | bool | int:
         """Get property state from device."""
         response = await self.send_request(
             timeout=timeout, command=command + GET_CR, bytes_to_read=bytes_to_read
@@ -84,12 +86,12 @@ class ProjectorTcp(BaseProjectorConnection):
         except KeyError:
             return BUSY
 
-    async def send_command(self, command, timeout):
+    async def send_command(self, command, timeout) -> str | bool | None:
         """Send command to Epson."""
         response = await self.send_request(timeout=timeout, command=command + CR)
         return response
 
-    async def send_request(self, timeout, command, bytes_to_read=16):
+    async def send_request(self, timeout, command, bytes_to_read=16) -> str | bool | None:
         """Send TCP request to Epson."""
         if self._isOpen is False:
             await self.async_init()
@@ -103,13 +105,14 @@ class ProjectorTcp(BaseProjectorConnection):
                 if response == ERROR:
                     return False
                 return response
+        return None
 
-    async def get_serial_number(self):
+    async def get_serial_number(self) -> str | None:
         """Send TCP request for serial number to Epson."""
         if not self._serial:
             try:
                 response = await self.get_property(SNO, DEFAULT_TIMEOUT)
-                if response:
+                if response and response != BUSY:
                     self._serial = response
                     return self._serial
             except asyncio.TimeoutError:
