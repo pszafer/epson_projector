@@ -101,19 +101,6 @@ class ProjectorHttp(BaseProjectorConnection):
 
     async def get_serial_number(self):
         """Request for serial number to Epson."""
-
-        # First attempt to get serial number through get_property
-        # This command also works when the projector is in standby
-        if not self._serial:
-            try:
-                response = await self.get_property(SNO, get_timeout(SNO))
-            except ProjectorUnavailableError:
-                response = False
-            else:
-                if response and response != BUSY and response != STATE_UNAVAILABLE:
-                    self._serial = response
-
-        # Otherwise fallback to the same method as used for TCP request for serial number
         if not self._serial:
             try:
                 async with asyncio.timeout(10):
