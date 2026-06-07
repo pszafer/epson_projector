@@ -1,8 +1,5 @@
 """Const helpers of Epson projector module."""
 
-HTTP = "http"
-TCP = "tcp"
-SERIAL = "serial"
 HTTP_OK = 200
 
 TCP_PORT = 3629
