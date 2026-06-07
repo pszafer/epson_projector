@@ -8,7 +8,6 @@ import asyncio
 from epson_projector.error import ProjectorUnavailableError, UnauthorizedError
 from epson_projector.escvpnet.error import EscVpNetConnectionError, EscVpNetForbiddenStatus, EscVpNetUnauthorizedStatus
 from epson_projector.escvpnet.escvpnet import EscVpNet
-from epson_projector.projector_serial import DEFAULT_TIMEOUT
 
 from .base_connection import BaseProjectorConnection
 from .const import (
