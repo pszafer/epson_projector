@@ -7,7 +7,7 @@ This document is intended to give a short overview/quickstart about the protocol
 The commands that this library uses to control the projector are part of ESC/VP21 command set.
 You can get the commands for your projector from the support page for your projector on the Epson website. The commands document is listed in the "Manuals & Documentation" section. The document seems to contain commands for most (all?) projectors.
 
-The gist of it is that you send the command (close it with a CR), the projector executes the command and will respond with : (colon).
+The gist of it is that you send the command and end it with a CR like `COMMAND VALUE\r` to set a value or `COMMAND?\r` get a value. The projector executes the command and will respond with `:` (colon) for set or `COMMAND=VALUE\r:` for get.
 
 ## Connections
 
