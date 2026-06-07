@@ -43,7 +43,7 @@ class Projector:
         """
         Create an Epson Projector connected through HTTP.
 
-        :param str host:             Hostname/IP/serial to the projector
+        :param str host:             Hostname/IP to the projector
         :param str | None password:  Optional password for HTTP
         :param int port:             HTTP port. Default 80.
         :param timeout_scale         Factor to multiply default timeouts by (for slow projectors)
@@ -63,7 +63,7 @@ class Projector:
         """
         Create an Epson Projector connected through ESC/VP.net.
 
-        :param str host:             Hostname/IP/serial to the projector
+        :param str host:             Hostname/IP to the projector
         :param str | None password:  Optional password for ESC/VP.net connection
         :param timeout_scale     Factor to multiply default timeouts by (for slow projectors)
         """
