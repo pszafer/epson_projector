@@ -35,7 +35,8 @@ async def main_serial(args):
 
     serialno = await projector.get_serial_number()
     print("Projector serial number:", serialno)
-    projector.close()
+
+    await projector.close()
 
 
 if __name__ == "__main__":

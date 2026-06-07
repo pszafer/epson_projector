@@ -26,7 +26,7 @@ async def main_tcp(args):
 
     # await projector.send_command(PWR_OFF)
 
-    projector.close()
+    await projector.close()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(  # noqa: F821

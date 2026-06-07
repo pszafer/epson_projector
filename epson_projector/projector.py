@@ -49,18 +49,9 @@ class Projector:
         :param timeout_scale         Factor to multiply default timeouts by (for slow projectors)
         """
         from .projector_http import ProjectorHttp
-        import aiohttp
-
-        middlewares = []
-        if password:
-            digest_auth = aiohttp.DigestAuthMiddleware(
-                login="EPSONWEB", password=password
-            )
-            middlewares.append(digest_auth)
-        websession = aiohttp.ClientSession(middlewares=middlewares)
 
         return Projector(connection=ProjectorHttp(
-            host=host, websession=websession, port=port
+            host=host, password=password, port=port
         ), timeout_scale=timeout_scale)
 
     @staticmethod
@@ -94,9 +85,9 @@ class Projector:
         return Projector(connection=ProjectorSerial(url), timeout_scale=timeout_scale)
 
 
-    def close(self):
+    async def close(self):
         """Close connection."""
-        self._projector.close()
+        await self._projector.close()
 
     def set_timeout_scale(self, timeout_scale=1.0):
         """Set timeout scale for commands (to compensate for slow projectors)."""

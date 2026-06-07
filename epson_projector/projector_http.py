@@ -11,6 +11,7 @@ from .const import (
     EPSON_KEY_COMMANDS,
     DIRECT_SEND,
     HTTP_OK,
+    HTTP_PORT,
     SNO,
     STATE_UNAVAILABLE,
     POWER,
@@ -33,12 +34,12 @@ class ProjectorHttp(BaseProjectorConnection):
     Control your projector with Python.
     """
 
-    def __init__(self, host, websession, port=80):
+    def __init__(self, host, password: str | None = None, port=HTTP_PORT):
         """
         Epson Projector controller.
 
         :param str host:        IP address or hostname of Projector
-        :param obj websession:  AioHttpWebsession for HTTP protocol
+        :param str password:    Optional password for HTTP
         :param int port:        Port to connect to. Default 80.
         """
         self._host = host
@@ -49,10 +50,18 @@ class ProjectorHttp(BaseProjectorConnection):
             "Referer": f"http://{self._host}:{port}/cgi-bin/webconf",
         }
         self._serial = None
-        self.websession = websession
 
-    def close(self):
-        return
+        middlewares = []
+        if password:
+            digest_auth = aiohttp.DigestAuthMiddleware(
+                login="EPSONWEB", password=password
+            )
+            middlewares.append(digest_auth)
+
+        self.websession = aiohttp.ClientSession(middlewares=middlewares)
+
+    async def close(self):
+        await self.websession.close()
 
     async def get_property(self, command, timeout):
         """Get property state from device."""

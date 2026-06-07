@@ -60,7 +60,7 @@ class ProjectorTcp(BaseProjectorConnection):
         except EscVpNetConnectionError as e:
             raise ProjectorUnavailableError("Connection error") from e
 
-    def close(self) -> None:
+    async def close(self) -> None:
         if self._isOpen:
             self._writer.close()
 

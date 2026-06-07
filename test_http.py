@@ -30,6 +30,8 @@ async def main_web(args):
     # data = await projector.send_request("EEMP0100À¨E")
     # print(data)
 
+    await projector.close()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
