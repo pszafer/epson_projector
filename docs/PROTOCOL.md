@@ -20,9 +20,9 @@ This connection method is implemented in `protocol_http.py`
 Commands are sent by doing an HTTP `GET` on `/cgi-bin/<type>`. Where type can be "directsend" or "json_query".
 The type "directsend" seems to be sending of plain ESC/VP21 commands. The type "json_query" results in a JSON reponse.
 
-The serial number of the projector seems to be obtained through the same way as done with `projector_tcp.py`.
-
 More details, see [HTTP_PROTOCOL.md](HTTP_PROTOCOL.md).
+
+The serial number of the projector is obtained through another protocol, see [Serial number](#serial-number).
 
 ### ESC/VP.net
 
@@ -39,3 +39,16 @@ This connection method is implemented in `protocol_serial.py`
 The projector is connected with a serial cable (see projector manual for wiring) and the commands are sent as plain text.
 
 Example: [Epson EH-TW3200](https://www.epson.eu/en_EU/support/sc/epson-eh-tw3200/s/s944)
+
+## Serial number protocol
+
+This package uses an alternative command to obtain the serial number. It is sent on port 3620 and starts with "EEMP0100" (in binary). It is an alternative to using ESC/VP21 `SNO?` command.
+
+This command is part of another protocol that is used by the iProjection and EasyMP apps.
+
+There seems to be no official documentation about the protocol, but these places have some info.
+
+* [Epson page mentioning the port number](https://download2.ebz.epson.net/sec_pubs_visual/projectors/EB-770F/useg/EN/Interactive/Reference/precautions_connection_netproj.html) and some others related to the protocol.
+* Epson projector reverse engineering of the protocol. Has some captures, some analysis and a client. [Github repo](https://github.com/steamcircuit-ca/epson-projector)
+* Java tool to project an image/picture on an Epson projector [Github repo](https://github.com/nospam2k/epson-wireless-projector).
+* Epsonconnector is a tool that can connect and send images/video to the projector [SourceForge repo](https://sourceforge.net/projects/epsonconnector/)
