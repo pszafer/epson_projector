@@ -9,7 +9,8 @@ from unittest.mock import patch
 
 import pytest
 
-from epson_projector.const import BUSY, POWER, SERIAL, SNO
+from epson_projector.const import BUSY, POWER, SNO
+from epson_projector.projector_serial import ProjectorSerial
 from epson_projector.projector import Projector
 
 
@@ -56,7 +57,8 @@ def _make_projector_with_open_serial(*responses: bytes) -> tuple[Projector, _Fak
     reader = _FakeSerialReader(*responses)
     writer = _FakeSerialWriter()
 
-    projector = Projector("/dev/ttyUSB0", type=SERIAL)
+    connection = ProjectorSerial("/dev/ttyUSB0")
+    projector = Projector(connection=connection)
     projector._projector._reader = reader
     projector._projector._writer = writer
     projector._projector._isOpen = True
@@ -102,7 +104,8 @@ async def test_serial_connection_is_established_when_not_open(monkeypatch):
         return reader, writer
 
     with patch("serialx.open_serial_connection", new=fake_open_serial_connection):
-        projector = Projector("/dev/ttyUSB0", type=SERIAL)
+        connection = ProjectorSerial("/dev/ttyUSB0")
+        projector = Projector(connection=connection)
         # _isOpen is False by default; first call triggers async_init
         value = await projector.get_property(POWER)
 

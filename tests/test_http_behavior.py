@@ -7,8 +7,9 @@ import aiohttp
 import asyncio
 import pytest
 
-from epson_projector.const import BUSY, HTTP, POWER
+from epson_projector.const import BUSY, POWER
 from epson_projector.error import ProjectorUnavailableError
+from epson_projector.projector_http import ProjectorHttp
 from epson_projector.projector import Projector
 
 
@@ -121,19 +122,22 @@ async def fake_serial_number_server():
 # ---------------------------------------------------------------------------
 
 async def test_get_power_reports_on_state():
-    projector = Projector("192.168.1.100", websession=_FakeSession(_ok(_power_on_json())), type=HTTP)
+    connection = ProjectorHttp("192.168.1.100", _FakeSession(_ok(_power_on_json())))
+    projector = Projector(connection=connection)
     assert await projector.get_power() == "01"
 
 
 async def test_get_power_reports_off_state():
-    projector = Projector("192.168.1.100", websession=_FakeSession(_ok(_power_off_json())), type=HTTP)
+    connection = ProjectorHttp("192.168.1.100", _FakeSession(_ok(_power_off_json())))
+    projector = Projector(connection=connection)
     assert await projector.get_power() == "04"
 
 
 async def test_get_power_preserves_last_good_value_after_server_error():
     """A 500 response is a soft failure; the cached power state is returned."""
     session = _FakeSession(_ok(_power_on_json()), _error_status(500))
-    projector = Projector("192.168.1.100", websession=session, type=HTTP)
+    connection = ProjectorHttp("192.168.1.100", session)
+    projector = Projector(connection=connection)
 
     first = await projector.get_power()
     second = await projector.get_power()
@@ -143,12 +147,14 @@ async def test_get_power_preserves_last_good_value_after_server_error():
 
 
 async def test_get_property_returns_value_for_arbitrary_command():
-    projector = Projector("192.168.1.100", websession=_FakeSession(_ok(_cmode_json("15"))), type=HTTP)
+    connection = ProjectorHttp("192.168.1.100", _FakeSession(_ok(_cmode_json("15"))))
+    projector = Projector(connection=connection)
     assert await projector.get_property("CMODE") == "15"
 
 
 async def test_network_error_raises_projector_unavailable():
-    projector = Projector("192.168.1.100", websession=_NetworkErrorSession(), type=HTTP)
+    connection = ProjectorHttp("192.168.1.100", _NetworkErrorSession())
+    projector = Projector(connection=connection)
 
     with pytest.raises(ProjectorUnavailableError):
         await projector.get_property(POWER)
@@ -157,7 +163,8 @@ async def test_network_error_raises_projector_unavailable():
 async def test_get_property_returns_busy_immediately_after_send_command():
     """send_command acquires a timed lock; the next get_property returns BUSY."""
     session = _FakeSession(_ok({"status": "ok"}))
-    projector = Projector("192.168.1.100", websession=session, type=HTTP)
+    connection = ProjectorHttp("192.168.1.100", session)
+    projector = Projector(connection=connection)
 
     await projector.send_command("PWR ON")
     assert await projector.get_property(POWER) == BUSY
@@ -166,7 +173,8 @@ async def test_get_property_returns_busy_immediately_after_send_command():
 async def test_send_command_returns_false_when_already_locked():
     """A second command while one is in-flight is rejected with False."""
     session = _FakeSession(_ok({"status": "ok"}))
-    projector = Projector("192.168.1.100", websession=session, type=HTTP)
+    connection = ProjectorHttp("192.168.1.100", session)
+    projector = Projector(connection=connection)
 
     await projector.send_command("PWR ON")
     assert await projector.send_command("SOURCE") is False
@@ -174,7 +182,8 @@ async def test_send_command_returns_false_when_already_locked():
 
 async def test_send_request_returns_busy_while_locked():
     session = _FakeSession(_ok({"status": "ok"}))
-    projector = Projector("192.168.1.100", websession=session, type=HTTP)
+    connection = ProjectorHttp("192.168.1.100", session)
+    projector = Projector(connection=connection)
 
     await projector.send_command("PWR ON")
     assert await projector.send_request([("jsoncallback", "PWR?")]) == BUSY
@@ -183,7 +192,8 @@ async def test_send_request_returns_busy_while_locked():
 async def test_timeout_scale_does_not_break_get_property():
     """A projector configured for slower responses still returns the correct value."""
     session = _FakeSession(_ok(_power_on_json()))
-    projector = Projector("192.168.1.100", websession=session, type=HTTP, timeout_scale=2.0)
+    connection = ProjectorHttp("192.168.1.100", session)
+    projector = Projector(connection=connection, timeout_scale=2.0)
 
     assert await projector.get_property(POWER) == "01"
 
@@ -192,11 +202,8 @@ async def test_get_serial_number_returns_value_when_projector_is_on(
     fake_serial_number_server, monkeypatch
 ):
     session = _FakeSession(_ok(_power_on_json()))
-    projector = Projector(
-        fake_serial_number_server.host,
-        websession=session,
-        type=HTTP,
-    )
+    connection = ProjectorHttp(fake_serial_number_server.host, session)
+    projector = Projector(connection=connection)
 
     monkeypatch.setattr(
         "epson_projector.projector_http.TCP_SERIAL_PORT",

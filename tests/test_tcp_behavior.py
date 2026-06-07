@@ -8,7 +8,8 @@ from typing import AsyncGenerator
 
 import pytest
 
-from epson_projector.const import BUSY, POWER, TCP
+from epson_projector.const import BUSY, POWER
+from epson_projector.projector_tcp import ProjectorTcp
 from epson_projector.projector import Projector
 
 # Valid 16-byte Connect response: 
@@ -106,9 +107,8 @@ async def fake_serial_number_server() -> AsyncGenerator[_FakeSerialNumberServer,
 
 
 def _projector(fake: _FakeTcpProjector) -> Projector:
-    p = Projector(fake.host, type=TCP)
-    p._projector._port = fake.port   # override default 3629 with the ephemeral port
-    return p
+    connection = ProjectorTcp(fake.host, port=fake.port)
+    return Projector(connection=connection)
 
 
 # ---------------------------------------------------------------------------
