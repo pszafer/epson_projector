@@ -11,12 +11,15 @@ import pytest
 from epson_projector.const import BUSY, POWER, TCP
 from epson_projector.projector import Projector
 
-# Valid 16-byte hello response: bytes[0:10] == "ESC/VP.net", bytes[14] == 32 (space)
-_HELLO_RESPONSE = b"ESC/VP.net\x00\x00\x00\x00\x20\x00"
-
+# Valid 16-byte Connect response: 
+# bytes[0:10] == "ESC/VP.net"
+# bytes[10] == 0x10 == Protocol version 1.0
+# bytes[11] == 0x01 == Type CONNECT
+# bytes[14] == 0x20 == Status OK
+_CONNECT_RESPONSE = b"ESC/VP.net\x10\x01\x00\x00\x20\x00"
 
 class _FakeTcpProjector:
-    """Fake projector TCP server that speaks the raw ESC/VP.net handshake and
+    """Fake projector TCP server that speaks the raw ESC/VP.net CONNECT handshake and
     then answers queued command/query responses one-by-one."""
 
     def __init__(self, host: str, port: int, _server: asyncio.AbstractServer):
@@ -34,8 +37,8 @@ class _FakeTcpProjector:
 
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
-            await reader.read(16)           # consume hello from client
-            writer.write(_HELLO_RESPONSE)
+            await reader.read(16)           # consume message from client
+            writer.write(_CONNECT_RESPONSE)
             await writer.drain()
 
             while True:
