@@ -106,7 +106,7 @@ async def fake_serial_number_server() -> AsyncGenerator[_FakeSerialNumberServer,
 
 
 @pytest.fixture
-def projector(fake_projector_tcp: _FakeTcpProjector) -> Projector:
+async def projector(fake_projector_tcp: _FakeTcpProjector) -> AsyncGenerator[Projector, None]:
     p = Projector(fake_projector_tcp.host, type=TCP)
     p._projector._port = fake_projector_tcp.port  # override default 3629 with the ephemeral port
     try:
