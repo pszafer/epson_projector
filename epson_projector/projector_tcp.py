@@ -102,11 +102,9 @@ class ProjectorTcp(BaseProjectorConnection):
         except Exception as e:
             _LOGGER.error("Error in listener task: %s", e)
 
-    async def get_property(self, command, timeout, bytes_to_read=16) -> str | bool | int:
+    async def get_property(self, command, timeout) -> str | bool | int:
         """Get property state from device."""
-        response = await self.send_request(
-            timeout=timeout, params=command + GET_CR, bytes_to_read=bytes_to_read
-        )
+        response = await self.send_request(timeout=timeout, params=command + GET_CR)
         _LOGGER.debug("Response is %s", response)
         if not response:
             return False
@@ -127,7 +125,7 @@ class ProjectorTcp(BaseProjectorConnection):
         response = await self.send_request(timeout=timeout, params=command + CR)
         return response
 
-    async def send_request(self, timeout, params, bytes_to_read=16) -> str | bool | None:
+    async def send_request(self, timeout, params) -> str | bool | None:
         """Send TCP request to Epson."""
         if not self._writer:
             await self.async_init()
