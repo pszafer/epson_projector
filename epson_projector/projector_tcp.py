@@ -104,7 +104,7 @@ class ProjectorTcp(BaseProjectorConnection):
 
     async def get_property(self, command, timeout) -> str | bool | int:
         """Get property state from device."""
-        response = await self.send_request(timeout=timeout, params=command + GET_CR)
+        response = await self.send_request(timeout=timeout, command=command + GET_CR)
         _LOGGER.debug("Response is %s", response)
         if not response:
             return False
@@ -122,22 +122,22 @@ class ProjectorTcp(BaseProjectorConnection):
 
     async def send_command(self, command, timeout) -> str | bool | None:
         """Send command to Epson."""
-        response = await self.send_request(timeout=timeout, params=command + CR)
+        response = await self.send_request(timeout=timeout, command=command + CR)
         return response
 
-    async def send_request(self, timeout, params) -> str | bool | None:
+    async def send_request(self, timeout, command) -> str | bool | None:
         """Send TCP request to Epson."""
         if not self._writer:
             await self.async_init()
 
-        if self._writer and params:
+        if self._writer and command:
             try:
                 async with asyncio.timeout(timeout):
                     # Note that command has ?\r already appended
                     pending_command = asyncio.get_running_loop().create_future()
                     self._pending_command_future = pending_command
 
-                    raw_command = params.encode()
+                    raw_command = command.encode()
                     _LOGGER.debug("Sending: %s", raw_command)
                     self._writer.write(raw_command)
                     await self._writer.drain()
@@ -149,7 +149,7 @@ class ProjectorTcp(BaseProjectorConnection):
                         return False
                     return response
             except asyncio.TimeoutError as e:
-                _LOGGER.error("Timeout error receiving response for command %s", params)
+                _LOGGER.error("Timeout error receiving response for command %s", command)
                 if pending_command_future := self._pending_command_future:
                     pending_command_future.cancel()
                 self._pending_command_future = None
