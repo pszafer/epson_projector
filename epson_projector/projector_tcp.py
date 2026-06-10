@@ -27,42 +27,6 @@ from .timeout import get_timeout
 
 _LOGGER = logging.getLogger(__name__)
 
-
-class PendingCommand:
-    """Class to represent a pending command."""
-
-    def __init__(self, command: str):
-        self._command = command
-        self._future = asyncio.get_running_loop().create_future()
-
-    def cancel(self) -> None:
-        """Cancel the pending command."""
-        if not self._future.done():
-            self._future.cancel()
-
-    async def wait_for_response(self) -> bytes:
-        """Wait for the response of the command."""
-        return await self._future
-
-    def handle_response(self, response: bytes) -> bool:
-        """Handle response if reponse to this command. Return True if handled, False otherwise."""
-
-        is_response = False
-
-        if response == b"ERR\r:":
-            is_response = True
-        elif self._command.endswith("?\r"): # Get command
-            if response.startswith(f"{self._command[:-2]}=".encode()):
-                is_response = True
-        elif response == b":": # This is set or null command
-            is_response = True
-
-        if is_response and not self._future.done():
-            self._future.set_result(response)
-
-        return is_response
-        
-
 class ProjectorTcp(BaseProjectorConnection):
     """
     Epson TCP connector
@@ -84,7 +48,7 @@ class ProjectorTcp(BaseProjectorConnection):
         self._isOpen = False
         self._serial = None
         self._listener_task = None
-        self._pending_command: PendingCommand | None = None
+        self._pending_command_future: asyncio.Future | None = None
 
     async def async_init(self) -> None:
         """Async init to open connection with projector."""
@@ -110,15 +74,16 @@ class ProjectorTcp(BaseProjectorConnection):
         """Listener task for messages coming from the projector."""
         try:
             while not writer.is_closing():
-                raw_response = await reader.readuntil(COLON.encode())
-                _LOGGER.debug("Received: %s pending_command=%s)", raw_response, self._pending_command is not None)
+                try:
+                    raw_response = await reader.readuntil(COLON.encode())
+                except asyncio.IncompleteReadError:
+                    _LOGGER.debug("EOF reached")
+                    return
+                    
+                _LOGGER.debug("Received: %s pending_command=%s)", raw_response, self._pending_command_future is not None)
 
-                if (cmd := self._pending_command) and cmd.handle_response(raw_response):
-                    continue
-    
-                # Must be an unsolicited message
+                # First handle supported unsolicited messages
                 if raw_response.startswith(b"IMEVENT="):
-                    _LOGGER.info("Received IMEVENT: %s", raw_response)
                     if self._on_imevent:
                         try:
                             imevent = ImEvent.from_message(raw_response)
@@ -127,7 +92,13 @@ class ProjectorTcp(BaseProjectorConnection):
                             _LOGGER.error("Error parsing IMEVENT: %s", e)
                     continue
 
-                _LOGGER.warning("Received unexpected message: %s", raw_response)
+                # Must be response to pending command
+                if (future := self._pending_command_future) and not future.done():
+                    future.set_result(raw_response)
+                    self._pending_command_future = None
+                    continue
+    
+                _LOGGER.warning("Received message while nothing pending: %s", raw_response)
         except Exception as e:
             _LOGGER.error("Error in listener task: %s", e)
 
@@ -165,27 +136,26 @@ class ProjectorTcp(BaseProjectorConnection):
             try:
                 async with asyncio.timeout(timeout):
                     # Note that command has ?\r already appended
-                    pending_command = PendingCommand(params)
-                    self._pending_command = pending_command
+                    pending_command = asyncio.get_running_loop().create_future()
+                    self._pending_command_future = pending_command
 
                     raw_command = params.encode()
                     _LOGGER.debug("Sending: %s", raw_command)
-
                     self._writer.write(raw_command)
                     await self._writer.drain()
 
-                    # response = await self._reader.read(bytes_to_read)
-                    response = await pending_command.wait_for_response()
+                    response = await pending_command
                     response = response.decode().replace(CR_COLON, "")
+
                     if response == ERROR:
                         return False
                     return response
             except asyncio.TimeoutError as e:
                 _LOGGER.error("Timeout error receiving response for command %s", params)
-                if pc := self._pending_command:
-                    pc.cancel()
-                self._pending_command = None
-                # Raise again to keep current behavior
+                if pending_command_future := self._pending_command_future:
+                    pending_command_future.cancel()
+                self._pending_command_future = None
+
                 raise e
         return None
 
