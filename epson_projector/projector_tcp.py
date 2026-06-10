@@ -45,19 +45,18 @@ class ProjectorTcp(BaseProjectorConnection):
         self._port = port
         self._password = password
         self._on_imevent = on_imevent
-        self._isOpen = False
         self._serial = None
         self._listener_task = None
         self._pending_command_future: asyncio.Future | None = None
+        self._writer: asyncio.StreamWriter | None = None
 
     async def async_init(self) -> None:
         """Async init to open connection with projector."""
         try:
             async with asyncio.timeout(10):
                 escvpnet = EscVpNet(host=self._host, port=self._port, password=self._password)
-                self._reader, self._writer = await escvpnet.connect()
-                self._listener_task = asyncio.create_task(self._listener_task_impl(self._reader, self._writer))
-                self._isOpen = True
+                reader, self._writer = await escvpnet.connect()
+                self._listener_task = asyncio.create_task(self._listener_task_impl(reader, self._writer))
                 _LOGGER.info("Connection open")
         except asyncio.TimeoutError:
             _LOGGER.error("Timeout error")
@@ -67,10 +66,11 @@ class ProjectorTcp(BaseProjectorConnection):
             raise ProjectorUnavailableError("Connection error") from e
 
     def close(self) -> None:
-        if self._isOpen:
+        if self._writer:
             self._writer.close()
+            self._writer = None
 
-    async def _listener_task_impl(self, reader, writer) -> None:
+    async def _listener_task_impl(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """Listener task for messages coming from the projector."""
         try:
             while not writer.is_closing():
@@ -129,10 +129,10 @@ class ProjectorTcp(BaseProjectorConnection):
 
     async def send_request(self, timeout, params, bytes_to_read=16) -> str | bool | None:
         """Send TCP request to Epson."""
-        if self._isOpen is False:
+        if not self._writer:
             await self.async_init()
-        if self._isOpen and params:
-            bytes_to_read = bytes_to_read if bytes_to_read else 16
+
+        if self._writer and params:
             try:
                 async with asyncio.timeout(timeout):
                     # Note that command has ?\r already appended
