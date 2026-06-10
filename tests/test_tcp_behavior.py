@@ -105,28 +105,30 @@ async def fake_serial_number_server() -> AsyncGenerator[_FakeSerialNumberServer,
         await fake.close()
 
 
-def _projector(fake: _FakeTcpProjector) -> Projector:
-    p = Projector(fake.host, type=TCP)
-    p._projector._port = fake.port   # override default 3629 with the ephemeral port
-    return p
+@pytest.fixture
+def projector(fake_projector_tcp: _FakeTcpProjector) -> Projector:
+    p = Projector(fake_projector_tcp.host, type=TCP)
+    p._projector._port = fake_projector_tcp.port  # override default 3629 with the ephemeral port
+    try:
+        yield p
+    finally:
+        p.close()
 
 
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
 
-async def test_tcp_get_power_reports_on_state(fake_projector_tcp):
+async def test_tcp_get_power_reports_on_state(fake_projector_tcp, projector):
     fake_projector_tcp.queue(b"PWR=01\r:")
-    projector = _projector(fake_projector_tcp)
 
     assert await projector.get_power() == "01"
 
 
-async def test_tcp_get_power_preserves_cached_value_on_error_response(fake_projector_tcp):
+async def test_tcp_get_power_preserves_cached_value_on_error_response(fake_projector_tcp, projector):
     """When the projector replies with ERR, the cached power value is returned."""
     fake_projector_tcp.queue(b"PWR=01\r:")
     fake_projector_tcp.queue(b"ERR\r:")
-    projector = _projector(fake_projector_tcp)
 
     first = await projector.get_power()
     second = await projector.get_power()
@@ -135,17 +137,15 @@ async def test_tcp_get_power_preserves_cached_value_on_error_response(fake_proje
     assert second == "01"
 
 
-async def test_tcp_get_property_returns_value(fake_projector_tcp):
+async def test_tcp_get_property_returns_value(fake_projector_tcp, projector):
     fake_projector_tcp.queue(b"PWR=01\r:")
-    projector = _projector(fake_projector_tcp)
 
     assert await projector.get_property(POWER) == "01"
 
 
-async def test_tcp_get_property_returns_busy_after_send_command(fake_projector_tcp):
+async def test_tcp_get_property_returns_busy_after_send_command(fake_projector_tcp, projector):
     """send_command acquires a timed lock; subsequent get_property returns BUSY."""
     fake_projector_tcp.queue(b":")
-    projector = _projector(fake_projector_tcp)
 
     await projector.send_command("PWR ON")
     result = await projector.get_property(POWER)
@@ -153,20 +153,18 @@ async def test_tcp_get_property_returns_busy_after_send_command(fake_projector_t
     assert result == BUSY
 
 
-async def test_tcp_send_command_rejected_while_locked(fake_projector_tcp):
+async def test_tcp_send_command_rejected_while_locked(fake_projector_tcp, projector):
     """A second send_command returns False when a lock is already active."""
     fake_projector_tcp.queue(b":")
-    projector = _projector(fake_projector_tcp)
 
     await projector.send_command("PWR ON")
     assert await projector.send_command("SOURCE") is False
 
 
 async def test_tcp_get_serial_number_returns_value(
-    fake_projector_tcp, fake_serial_number_server, monkeypatch
+    fake_projector_tcp, projector, fake_serial_number_server, monkeypatch
 ):
     fake_projector_tcp.queue(b"PWR=01\r:")
-    projector = _projector(fake_projector_tcp)
 
     monkeypatch.setattr(
         "epson_projector.projector_tcp.TCP_SERIAL_PORT",
