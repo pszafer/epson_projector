@@ -36,9 +36,9 @@ class ProjectorTcp(BaseProjectorConnection):
         """
         Epson TCP connector
 
-        :param str host:     IP address of Projector
-        :param int port:     Port to connect to. Default 3629.
-        :param str password: Password for the projector. Default None.
+        :param str      host:       IP address of Projector
+        :param int      port:       Port to connect to. Default 3629.
+        :param str      password:   Password for the projector. Default None.
         :param callable on_imevent: Callback for IMEVENT messages. Default None.
         """
         self._host = host
@@ -133,7 +133,6 @@ class ProjectorTcp(BaseProjectorConnection):
         if self._writer and command:
             try:
                 async with asyncio.timeout(timeout):
-                    # Note that command has ?\r already appended
                     pending_command = asyncio.get_running_loop().create_future()
                     self._pending_command_future = pending_command
 
