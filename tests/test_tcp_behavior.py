@@ -9,7 +9,9 @@ from typing import AsyncGenerator
 import pytest
 
 from epson_projector.const import BUSY, POWER, TCP
+from epson_projector.imevent import AlarmType, ProjectorStatus, WarningType
 from epson_projector.projector import Projector
+from epson_projector.projector_tcp import ProjectorTcp
 
 # Valid 16-byte Connect response: 
 # bytes[0:10] == "ESC/VP.net"
@@ -172,3 +174,30 @@ async def test_tcp_get_serial_number_returns_value(
     )
 
     assert await projector.get_serial_number() == fake_serial_number_server.serial_number
+
+
+async def test_tcp_on_imevent_callback_triggered(fake_projector_tcp):
+    received = []
+
+    def on_imevent(event):
+        received.append(event)
+
+    projector_tcp = ProjectorTcp(
+        host=fake_projector_tcp.host,
+        port=fake_projector_tcp.port,
+        on_imevent=on_imevent,
+    )
+
+    fake_projector_tcp.queue(
+        b"IMEVENT=0001 03 00000002 00000000 T1 F1\r:PWR=01\r:"
+    )
+
+    try:
+        assert await projector_tcp.get_property(POWER, timeout=1) == "01"
+        assert len(received) == 1
+        assert received[0].event_code == 1
+        assert received[0].power_status == ProjectorStatus.NORMAL
+        assert received[0].warning_type == WarningType.NO_SIGNAL
+        assert received[0].alarm_type == AlarmType(0)
+    finally:
+        projector_tcp.close()
