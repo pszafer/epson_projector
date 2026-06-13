@@ -45,11 +45,14 @@ class ProjectorTcp(BaseProjectorConnection):
         self._port = port
         self._password = password
         self._on_imevent = on_imevent
+
         self._serial = None
         self._listener_task = None
-        self._pending_command_future: asyncio.Future | None = None
-        self._request_lock = asyncio.Lock()
         self._writer: asyncio.StreamWriter | None = None
+
+        # Writing to pending_request should only be done from the `request` method within the lock
+        self._pending_request_future: asyncio.Future | None = None
+        self._request_lock = asyncio.Lock()
 
     async def async_init(self) -> None:
         """Async init to open connection with projector."""
@@ -83,7 +86,7 @@ class ProjectorTcp(BaseProjectorConnection):
                 _LOGGER.debug("EOF reached")
                 break
                 
-            _LOGGER.debug("Received: %s pending_command=%s", raw_response, self._pending_command_future is not None)
+            _LOGGER.debug("Received: %s", raw_response)
 
             # First handle supported unsolicited messages
             if raw_response.startswith(b"IMEVENT="):
@@ -95,8 +98,8 @@ class ProjectorTcp(BaseProjectorConnection):
                         _LOGGER.error("Error parsing IMEVENT: %s", e)
                 continue
 
-            # Must be response to pending command
-            if (future := self._pending_command_future) and not future.done():
+            # Should be response to pending command
+            if (future := self._pending_request_future) and not future.done():
                 future.set_result(raw_response)
                 continue
 
@@ -135,7 +138,7 @@ class ProjectorTcp(BaseProjectorConnection):
                 try:
                     async with asyncio.timeout(timeout):
                         pending_command = asyncio.get_running_loop().create_future()
-                        self._pending_command_future = pending_command
+                        self._pending_request_future = pending_command
 
                         raw_command = command.encode()
                         _LOGGER.debug("Sending: %s", raw_command)
@@ -150,9 +153,9 @@ class ProjectorTcp(BaseProjectorConnection):
                         return response
                 except asyncio.TimeoutError as e:
                     _LOGGER.error("Timeout error receiving response for command %s", command)
-                    if pending_command_future := self._pending_command_future:
+                    if pending_command_future := self._pending_request_future:
                         pending_command_future.cancel()
-                    self._pending_command_future = None
+                    self._pending_request_future = None
 
                     raise e
         return None
