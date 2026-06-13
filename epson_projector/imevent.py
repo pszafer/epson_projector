@@ -56,7 +56,7 @@ class ImEvent:
         self.alarm_type = alarm_type
 
     def __str__(self) -> str:
-        return f"ImEvent(event_code={self.event_code}, power_status={self.power_status}, warning_type={self.warning_type}, alarm_type={self.alarm_type})"
+        return f"ImEvent(event_code={self.event_code}, power_status={self.power_status}, warning_type={self.warning_type.name}, alarm_type={self.alarm_type.name})"
 
     @staticmethod
     def from_message(raw_message: bytes) -> ImEvent:
@@ -80,10 +80,12 @@ class ImEvent:
         if event_code != 1:
             raise ValueError(f"Unknown event code: {event_code}")
 
-        # The parameters have 0 prefixes, so probably hex values.
+        # Decode parameters
         power_status = ProjectorStatus(int(parts[1], 16))
         warning_type = WarningType(int(parts[2], 16))
         alarm_type = AlarmType(int(parts[3], 16))
+
+        # Any postfixes like T1 and F1 are discarded because the meaning is unknown.
 
         return ImEvent(
             event_code=event_code,
