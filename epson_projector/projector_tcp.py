@@ -48,6 +48,7 @@ class ProjectorTcp(BaseProjectorConnection):
         self._serial = None
         self._listener_task = None
         self._pending_command_future: asyncio.Future | None = None
+        self._request_lock = asyncio.Lock()
         self._writer: asyncio.StreamWriter | None = None
 
     async def async_init(self) -> None:
@@ -131,29 +132,30 @@ class ProjectorTcp(BaseProjectorConnection):
             await self.async_init()
 
         if self._writer and command:
-            try:
-                async with asyncio.timeout(timeout):
-                    pending_command = asyncio.get_running_loop().create_future()
-                    self._pending_command_future = pending_command
+            async with self._request_lock:
+                try:
+                    async with asyncio.timeout(timeout):
+                        pending_command = asyncio.get_running_loop().create_future()
+                        self._pending_command_future = pending_command
 
-                    raw_command = command.encode()
-                    _LOGGER.debug("Sending: %s", raw_command)
-                    self._writer.write(raw_command)
-                    await self._writer.drain()
+                        raw_command = command.encode()
+                        _LOGGER.debug("Sending: %s", raw_command)
+                        self._writer.write(raw_command)
+                        await self._writer.drain()
 
-                    response = await pending_command
-                    response = response.decode().replace(CR_COLON, "")
+                        response = await pending_command
+                        response = response.decode().replace(CR_COLON, "")
 
-                    if response == ERROR:
-                        return False
-                    return response
-            except asyncio.TimeoutError as e:
-                _LOGGER.error("Timeout error receiving response for command %s", command)
-                if pending_command_future := self._pending_command_future:
-                    pending_command_future.cancel()
-                self._pending_command_future = None
+                        if response == ERROR:
+                            return False
+                        return response
+                except asyncio.TimeoutError as e:
+                    _LOGGER.error("Timeout error receiving response for command %s", command)
+                    if pending_command_future := self._pending_command_future:
+                        pending_command_future.cancel()
+                    self._pending_command_future = None
 
-                raise e
+                    raise e
         return None
 
     async def get_serial_number(self) -> str | None:
