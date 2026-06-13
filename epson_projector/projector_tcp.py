@@ -157,8 +157,7 @@ class ProjectorTcp(BaseProjectorConnection):
                     if pending_command_future := self._pending_request_future:
                         pending_command_future.cancel()
                     self._pending_request_future = None
-
-                    raise e
+                    raise
         return None
 
     async def get_serial_number(self) -> str | None:
