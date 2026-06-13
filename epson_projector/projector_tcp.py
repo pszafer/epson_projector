@@ -67,41 +67,40 @@ class ProjectorTcp(BaseProjectorConnection):
             raise ProjectorUnavailableError("Connection error") from e
 
     def close(self) -> None:
+        if self._listener_task:
+            self._listener_task.cancel()
+            self._listener_task = None
         if self._writer:
             self._writer.close()
             self._writer = None
 
     async def _listener_task_impl(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """Listener task for messages coming from the projector."""
-        try:
-            while not writer.is_closing():
-                try:
-                    raw_response = await reader.readuntil(COLON.encode())
-                except asyncio.IncompleteReadError:
-                    _LOGGER.debug("EOF reached")
-                    return
-                    
-                _LOGGER.debug("Received: %s pending_command=%s)", raw_response, self._pending_command_future is not None)
+        while not writer.is_closing():
+            try:
+                raw_response = await reader.readuntil(COLON.encode())
+            except asyncio.IncompleteReadError:
+                _LOGGER.debug("EOF reached")
+                break
+                
+            _LOGGER.debug("Received: %s pending_command=%s", raw_response, self._pending_command_future is not None)
 
-                # First handle supported unsolicited messages
-                if raw_response.startswith(b"IMEVENT="):
-                    if self._on_imevent:
-                        try:
-                            imevent = ImEvent.from_message(raw_response)
-                            self._on_imevent(imevent)
-                        except ValueError as e:
-                            _LOGGER.error("Error parsing IMEVENT: %s", e)
-                    continue
+            # First handle supported unsolicited messages
+            if raw_response.startswith(b"IMEVENT="):
+                if self._on_imevent:
+                    try:
+                        imevent = ImEvent.from_message(raw_response)
+                        self._on_imevent(imevent)
+                    except ValueError as e:
+                        _LOGGER.error("Error parsing IMEVENT: %s", e)
+                continue
 
-                # Must be response to pending command
-                if (future := self._pending_command_future) and not future.done():
-                    future.set_result(raw_response)
-                    self._pending_command_future = None
-                    continue
-    
-                _LOGGER.warning("Received message while nothing pending: %s", raw_response)
-        except Exception as e:
-            _LOGGER.error("Error in listener task: %s", e)
+            # Must be response to pending command
+            if (future := self._pending_command_future) and not future.done():
+                future.set_result(raw_response)
+                continue
+
+            _LOGGER.warning("Received message while nothing pending: %s", raw_response)
 
     async def get_property(self, command, timeout) -> str | bool | int:
         """Get property state from device."""
