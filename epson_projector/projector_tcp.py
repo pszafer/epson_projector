@@ -7,11 +7,13 @@ import asyncio
 
 from epson_projector.error import ProjectorUnavailableError, UnauthorizedError
 from epson_projector.escvpnet.error import EscVpNetConnectionError, EscVpNetForbiddenStatus, EscVpNetUnauthorizedStatus
-from epson_projector.escvpnet.escvpnet import EscVpNet
+from epson_projector.escvpnet.escvpnet import ESC_VPNET_PORT, EscVpNet
+from epson_projector.imevent import ImEvent
 
 from .base_connection import BaseProjectorConnection
 from .const import (
     BUSY,
+    COLON,
     ERROR,
     CR,
     CR_COLON,
@@ -25,33 +27,40 @@ from .timeout import get_timeout
 
 _LOGGER = logging.getLogger(__name__)
 
-
 class ProjectorTcp(BaseProjectorConnection):
     """
     Epson TCP connector
     """
 
-    def __init__(self, host, port=3629, password=None):
+    def __init__(self, host, port=ESC_VPNET_PORT, password=None, on_imevent=None):
         """
         Epson TCP connector
 
-        :param str host:     IP address of Projector
-        :param int port:     Port to connect to. Default 3629.
-        :param str password: Password for the projector. Default None.
+        :param str      host:       IP address of Projector
+        :param int      port:       Port to connect to. Default 3629.
+        :param str      password:   Password for the projector. Default None.
+        :param callable on_imevent: Callback for IMEVENT messages. Default None.
         """
         self._host = host
         self._port = port
         self._password = password
-        self._isOpen = False
+        self._on_imevent = on_imevent
+
         self._serial = None
+        self._listener_task = None
+        self._writer: asyncio.StreamWriter | None = None
+
+        # Writing to pending_request should only be done from the `request` method within the lock
+        self._pending_request_future: asyncio.Future | None = None
+        self._request_lock = asyncio.Lock()
 
     async def async_init(self) -> None:
         """Async init to open connection with projector."""
         try:
             async with asyncio.timeout(10):
                 escvpnet = EscVpNet(host=self._host, port=self._port, password=self._password)
-                self._reader, self._writer = await escvpnet.connect()
-                self._isOpen = True
+                reader, self._writer = await escvpnet.connect()
+                self._listener_task = asyncio.create_task(self._listener_task_impl(reader, self._writer))
                 _LOGGER.info("Connection open")
         except asyncio.TimeoutError:
             _LOGGER.error("Timeout error")
@@ -61,14 +70,46 @@ class ProjectorTcp(BaseProjectorConnection):
             raise ProjectorUnavailableError("Connection error") from e
 
     def close(self) -> None:
-        if self._isOpen:
+        if self._listener_task:
+            self._listener_task.cancel()
+            self._listener_task = None
+        if self._writer:
             self._writer.close()
+            self._writer = None
 
-    async def get_property(self, command, timeout, bytes_to_read=16) -> str | bool | int:
+    async def _listener_task_impl(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        """Listener task for messages coming from the projector."""
+        while not writer.is_closing():
+            try:
+                raw_response = await reader.readuntil(COLON.encode())
+            except asyncio.IncompleteReadError:
+                _LOGGER.debug("EOF reached")
+                writer.close()
+                self._writer = None
+                break
+                
+            _LOGGER.debug("Received: %s", raw_response)
+
+            # First handle supported unsolicited messages
+            if raw_response.startswith(b"IMEVENT="):
+                if self._on_imevent:
+                    try:
+                        imevent = ImEvent.from_message(raw_response)
+                        self._on_imevent(imevent)
+                    except ValueError as e:
+                        _LOGGER.error("Error parsing IMEVENT: %s", e)
+                continue
+
+            # Should be response to pending command
+            if (future := self._pending_request_future) and not future.done():
+                future.set_result(raw_response)
+                continue
+
+            _LOGGER.warning("Received message while nothing pending: %s", raw_response)
+
+    async def get_property(self, command, timeout) -> str | bool | int:
         """Get property state from device."""
-        response = await self.send_request(
-            timeout=timeout, command=command + GET_CR, bytes_to_read=bytes_to_read
-        )
+        response = await self.send_request(timeout=timeout, command=command + GET_CR)
         _LOGGER.debug("Response is %s", response)
         if not response:
             return False
@@ -89,20 +130,35 @@ class ProjectorTcp(BaseProjectorConnection):
         response = await self.send_request(timeout=timeout, command=command + CR)
         return response
 
-    async def send_request(self, timeout, command, bytes_to_read=16) -> str | bool | None:
+    async def send_request(self, timeout, command) -> str | bool | None:
         """Send TCP request to Epson."""
-        if self._isOpen is False:
+        if not self._writer:
             await self.async_init()
-        if self._isOpen and command:
-            bytes_to_read = bytes_to_read if bytes_to_read else 16
-            async with asyncio.timeout(timeout):
-                self._writer.write(command.encode())
-                await self._writer.drain()
-                response = await self._reader.read(bytes_to_read)
-                response = response.decode().replace(CR_COLON, "")
-                if response == ERROR:
-                    return False
-                return response
+
+        if self._writer and command:
+            async with self._request_lock:
+                try:
+                    async with asyncio.timeout(timeout):
+                        pending_command = asyncio.get_running_loop().create_future()
+                        self._pending_request_future = pending_command
+
+                        raw_command = command.encode()
+                        _LOGGER.debug("Sending: %s", raw_command)
+                        self._writer.write(raw_command)
+                        await self._writer.drain()
+
+                        response = await pending_command
+                        response = response.decode().replace(CR_COLON, "")
+
+                        if response == ERROR:
+                            return False
+                        return response
+                except asyncio.TimeoutError as e:
+                    _LOGGER.error("Timeout error receiving response for command %s", command)
+                    if pending_command_future := self._pending_request_future:
+                        pending_command_future.cancel()
+                    self._pending_request_future = None
+                    raise
         return None
 
     async def get_serial_number(self) -> str | None:
