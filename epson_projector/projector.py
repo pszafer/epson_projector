@@ -2,7 +2,7 @@
 import logging
 
 from .base_connection import BaseProjectorConnection
-from .const import BUSY, TCP_PORT, HTTP_PORT, POWER, HTTP, TCP, SERIAL
+from .const import BUSY, ESCVPNET_PORT, HTTP_PORT, POWER, HTTP, TCP, SERIAL
 from .timeout import get_timeout
 
 from .lock import Lock
@@ -48,7 +48,7 @@ class Projector:
             )
         elif self._type == TCP:
             from .projector_tcp import ProjectorTcp
-            self._projector = ProjectorTcp(host, TCP_PORT, password=tcp_password)
+            self._projector = ProjectorTcp(host, ESCVPNET_PORT, password=tcp_password)
         elif self._type == SERIAL:
             from .projector_serial import ProjectorSerial
             self._projector = ProjectorSerial(host)

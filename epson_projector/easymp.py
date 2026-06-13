@@ -9,7 +9,7 @@ from .base_connection import BaseProjectorConnection
 from .const import (
     POWER,
     EPSON_CODES,
-    TCP_SERIAL_PORT,
+    EASYMP_PORT,
     SERIAL_BYTE,
 )
 from .error import ProjectorUnavailableError
@@ -26,7 +26,7 @@ async def get_serial_number(projector_connection: BaseProjectorConnection, host:
             if power_on == EPSON_CODES[POWER]:
                 reader, writer = await asyncio.open_connection(
                     host=host,
-                    port=TCP_SERIAL_PORT,
+                    port=EASYMP_PORT,
                 )
                 _LOGGER.debug("Asking for serial number.")
                 try:
