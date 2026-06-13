@@ -81,9 +81,10 @@ class ProjectorTcp(BaseProjectorConnection):
         """Listener task for messages coming from the projector."""
         while not writer.is_closing():
             try:
-                raw_response = await reader.readuntil(COLON.encode())
             except asyncio.IncompleteReadError:
                 _LOGGER.debug("EOF reached")
+                writer.close()
+                self._writer = None
                 break
                 
             _LOGGER.debug("Received: %s", raw_response)
