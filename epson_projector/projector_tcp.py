@@ -5,10 +5,6 @@ import logging
 
 import asyncio
 
-from epson_projector.error import ProjectorUnavailableError, UnauthorizedError
-from epson_projector.escvpnet.error import EscVpNetConnectionError, EscVpNetForbiddenStatus, EscVpNetUnauthorizedStatus
-from epson_projector.escvpnet.escvpnet import ESC_VPNET_PORT, EscVpNet
-from epson_projector.imevent import ImEvent
 
 from .base_connection import BaseProjectorConnection
 from .const import (
@@ -18,12 +14,12 @@ from .const import (
     CR,
     CR_COLON,
     GET_CR,
-    EPSON_CODES,
-    POWER,
-    SERIAL_BYTE,
-    TCP_SERIAL_PORT,
 )
-from .timeout import get_timeout
+from .easymp import get_serial_number
+from .error import ProjectorUnavailableError, UnauthorizedError
+from .escvpnet.error import EscVpNetConnectionError, EscVpNetForbiddenStatus, EscVpNetUnauthorizedStatus
+from .escvpnet.escvpnet import ESC_VPNET_PORT, EscVpNet
+from .imevent import ImEvent
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -164,23 +160,5 @@ class ProjectorTcp(BaseProjectorConnection):
     async def get_serial_number(self) -> str | None:
         """Send TCP request for serial number to Epson."""
         if not self._serial:
-            try:
-                async with asyncio.timeout(10):
-                    power_on = await self.get_property(POWER, get_timeout(POWER))
-                    if power_on == EPSON_CODES[POWER]:
-                        reader, writer = await asyncio.open_connection(
-                            host=self._host, port=TCP_SERIAL_PORT
-                        )
-                        _LOGGER.debug("Asking for serial number.")
-                        writer.write(SERIAL_BYTE)
-                        await writer.drain()
-                        response = await reader.read(32)
-                        self._serial = response[24:].decode()
-                        writer.close()
-                    else:
-                        _LOGGER.error("Is projector turned on?")
-            except asyncio.TimeoutError:
-                _LOGGER.error(
-                    "Timeout error receiving SERIAL of projector. Is projector turned on?"
-                )
+            self._serial = await get_serial_number(self, self._host)
         return self._serial
