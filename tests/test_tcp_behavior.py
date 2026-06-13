@@ -169,7 +169,7 @@ async def test_tcp_get_serial_number_returns_value(
     fake_projector_tcp.queue(b"PWR=01\r:")
 
     monkeypatch.setattr(
-        "epson_projector.projector_tcp.TCP_SERIAL_PORT",
+        "epson_projector.easymp.TCP_SERIAL_PORT",
         fake_serial_number_server.port,
     )
 
