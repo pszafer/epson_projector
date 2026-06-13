@@ -34,7 +34,7 @@ Searching for ESC/VP.net result in this specification <https://archive.org/detai
 
 ESC/VP.net adds a number of additional commands to the ESC/VP21 command set. These are mostly commands to set/get network related configuration. Check the specification for the full list. Not every command is implemented on all projectors.
 
-ESC/VP.net can push status updates with the IMEVENT message. This message can be sent at any time, so also inbetween request and its response. The IMEVENT message contains info about the power status, warnings and alerts. It seems like a message gets pushed when there is a change in any of those. The format is the same as the response to the `PWSTATUS?` command. Check the specification for details on the formatting.
+ESC/VP.net can push status updates with the IMEVENT message. This message can be sent at any time, so also in between request and its response. The IMEVENT message contains info about the power status, warnings and alarms. It seems like a message gets pushed when there is a change in any of those. The format is the same as the response to the `PWSTATUS?` command. Check the specification for details on the formatting.
 
 ### Serial
 
