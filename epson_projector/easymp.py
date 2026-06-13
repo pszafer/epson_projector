@@ -29,12 +29,15 @@ async def get_serial_number(projector_connection: BaseProjectorConnection, host:
                     port=TCP_SERIAL_PORT,
                 )
                 _LOGGER.debug("Asking for serial number.")
-                writer.write(SERIAL_BYTE)
-                await writer.drain()
-                response = await reader.read(32)
-                serial_number = response[24:].decode()
-                writer.close()
-                return serial_number
+                try:
+                    writer.write(SERIAL_BYTE)
+                    await writer.drain()
+                    response = await reader.read(32)
+                    serial_number = response[24:].decode()
+                    return serial_number
+                finally:
+                    writer.close()
+                    await writer.wait_closed()
             else:
                 _LOGGER.error("Is projector turned on?")
     except ProjectorUnavailableError:
