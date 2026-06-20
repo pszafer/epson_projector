@@ -2,6 +2,8 @@
 
 This is mostly reverse-engineered from `epson_projector/projector_http.py` in [epson-projector](https://github.com/pszafer/epson_projector) and observations of communication with LS11000 projector.
 
+It maybe part of the [Web API](https://download3.ebz.epson.net/dsc/f/03/00/12/82/04/c6e7ed44d7553969835eab058494d2d818493921/WebAPI_Specifications_EN_Ver1.1.0.pdf) because it uses the same authentication. On the other hand the found endpoints are not mentioned. However there is another endpoint for ESC/VP21 commands `/api/v**/control/escvp21`. Where `**` is the API version which is `01` in the document.
+
 ---
 
 ## Endpoints
@@ -129,7 +131,9 @@ It seems like older models did not have (or require) authorization. Newer models
 
 The used method is [Digest Authentication](https://en.wikipedia.org/wiki/Digest_access_authentication) which is a well-known standard.
 
-The user is "EPSONWEB"
+The user is "EPSONWEB" and uses the password listed as the "Web Control Password" in the menus.
+
+There also seems to be a user called "EPSONREMOTE" which probably uses the "Basic Control > Remote Password". It is currently unknown if this also impacts how ESC/VP21 commands.
 
 ## CURL example
 
