@@ -1,4 +1,6 @@
 """Main of Epson projector module."""
+from __future__ import annotations
+
 import logging
 
 from .base_connection import BaseProjectorConnection
@@ -33,13 +35,14 @@ class Projector:
         self._power = None
         self._projector = connection
 
-    @staticmethod
+    @classmethod
     def create_http(
+        cls,
         host: str,
         password: str | None = None,
         port: int = HTTP_PORT,
         timeout_scale=1.0,
-    ) -> "Projector":
+    ) -> Projector:
         """
         Create an Epson Projector connected through HTTP.
 
@@ -50,16 +53,17 @@ class Projector:
         """
         from .projector_http import ProjectorHttp
 
-        return Projector(connection=ProjectorHttp(
+        return cls(connection=ProjectorHttp(
             host=host, password=password, port=port
         ), timeout_scale=timeout_scale)
 
-    @staticmethod
+    @classmethod
     def create_escvpnet(
+        cls,
         host: str,
         password: str | None = None,
         timeout_scale=1.0
-    ) -> "Projector":
+    ) -> Projector:
         """
         Create an Epson Projector connected through ESC/VP.net.
 
@@ -68,13 +72,14 @@ class Projector:
         :param timeout_scale     Factor to multiply default timeouts by (for slow projectors)
         """
         from .projector_tcp import ProjectorTcp
-        return Projector(connection=ProjectorTcp(host, TCP_PORT, password=password), timeout_scale=timeout_scale)
+        return cls(connection=ProjectorTcp(host, TCP_PORT, password=password), timeout_scale=timeout_scale)
 
-    @staticmethod
+    @classmethod
     def create_serial(
+        cls,
         url: str,
         timeout_scale=1.0,
-    ) -> "Projector":
+    ) -> Projector:
         """
         Create an Epson Projector connected through serial.
 
@@ -82,7 +87,7 @@ class Projector:
         :param timeout_scale     Factor to multiply default timeouts by (for slow projectors)
         """
         from .projector_serial import ProjectorSerial
-        return Projector(connection=ProjectorSerial(url), timeout_scale=timeout_scale)
+        return cls(connection=ProjectorSerial(url), timeout_scale=timeout_scale)
 
 
     async def close(self):
