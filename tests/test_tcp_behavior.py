@@ -8,7 +8,7 @@ from typing import AsyncGenerator
 
 import pytest
 
-from epson_projector.const import BUSY, POWER, TCP
+from epson_projector.const import BUSY, POWER
 from epson_projector.imevent import AlarmType, ProjectorStatus, WarningType
 from epson_projector.projector import Projector
 from epson_projector.projector_tcp import ProjectorTcp

@@ -1,9 +1,5 @@
 """Const helpers of Epson projector module."""
 
-HTTP = "http"
-TCP = "tcp"
-SERIAL = "serial"
-
 EASYMP_PORT = 3620
 EEMP0100 = "45454d5030313030"
 SERIAL_COMMAND = "0000000002000000"
