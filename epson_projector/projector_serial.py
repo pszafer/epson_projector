@@ -75,6 +75,7 @@ class ProjectorSerial(BaseProjectorConnection):
         if self._writer and not self._writer.is_closing():
             _LOGGER.debug("Closing serial connection")
             self._writer.close()
+            await self._writer.wait_closed()
             self._writer = None
             self._isOpen = False
             self._timeouts = 0

@@ -4,6 +4,8 @@ import logging
 import aiohttp
 import asyncio
 
+
+from .base_connection import BaseProjectorConnection
 from .const import (
     ACCEPT_ENCODING,
     ACCEPT_HEADER,
@@ -12,17 +14,11 @@ from .const import (
     DIRECT_SEND,
     HTTP_OK,
     HTTP_PORT,
-    SNO,
     STATE_UNAVAILABLE,
-    POWER,
-    EPSON_CODES,
-    TCP_SERIAL_PORT,
-    SERIAL_BYTE,
     JSON_QUERY,
 )
 from .error import ProjectorUnavailableError
-from .timeout import get_timeout
-from .base_connection import BaseProjectorConnection
+from .easymp import get_serial_number
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -111,27 +107,6 @@ class ProjectorHttp(BaseProjectorConnection):
     async def get_serial_number(self):
         """Request for serial number to Epson."""
         if not self._serial:
-            try:
-                async with asyncio.timeout(10):
-                    power_on = await self.get_property(POWER, get_timeout(POWER))
-                    if power_on == EPSON_CODES[POWER]:
-                        reader, writer = await asyncio.open_connection(
-                            host=self._host,
-                            port=TCP_SERIAL_PORT,
-                        )
-                        _LOGGER.debug("Asking for serial number.")
-                        writer.write(SERIAL_BYTE)
-                        await writer.drain()
-                        response = await reader.read(32)
-                        self._serial = response[24:].decode()
-                        writer.close()
-                    else:
-                        _LOGGER.error("Is projector turned on?")
-            except ProjectorUnavailableError:
-                _LOGGER.error("Projector unavailable. Is projector connected and turned on?")
-            except asyncio.TimeoutError:
-                _LOGGER.error(
-                    "Timeout error receiving SERIAL of projector. Is projector turned on?"
-                )
+            self._serial = await get_serial_number(self, self._host)
 
         return self._serial

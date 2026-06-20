@@ -7,9 +7,7 @@ import asyncio
 from collections import deque
 from unittest.mock import patch
 
-import pytest
-
-from epson_projector.const import BUSY, POWER, SNO
+from epson_projector.const import BUSY, POWER
 from epson_projector.projector_serial import ProjectorSerial
 from epson_projector.projector import Projector
 
@@ -58,10 +56,11 @@ def _make_projector_with_open_serial(*responses: bytes) -> tuple[Projector, _Fak
     writer = _FakeSerialWriter()
 
     connection = ProjectorSerial("/dev/ttyUSB0")
+    connection._reader = reader
+    connection._writer = writer
+    connection._isOpen = True
+
     projector = Projector(connection=connection)
-    projector._projector._reader = reader
-    projector._projector._writer = writer
-    projector._projector._isOpen = True
     return projector, writer
 
 

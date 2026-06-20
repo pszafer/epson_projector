@@ -1,25 +1,29 @@
 """Const helpers of Epson projector module."""
 
-HTTP_OK = 200
+HTTP = "http"
+TCP = "tcp"
+SERIAL = "serial"
 
-TCP_PORT = 3629
-TCP_SERIAL_PORT = 3620
-HTTP_PORT = 80
+EASYMP_PORT = 3620
 EEMP0100 = "45454d5030313030"
 SERIAL_COMMAND = "0000000002000000"
 SERIAL_BYTE = bytearray.fromhex(f"{EEMP0100}{SERIAL_COMMAND}")
 
+HTTP_OK = 200
+HTTP_PORT = 80
 ACCEPT_ENCODING = "gzip, deflate"
 ACCEPT_HEADER = "application/json, text/javascript"
 JSON_QUERY = "json_query"
 DIRECT_SEND = "directsend"
 
+ESCVPNET_PORT = 3629
 ESCVPNET_HELLO_COMMAND = "ESC/VP.net\x10\x03\x00\x00\x00\x00"
 ESCVPNETNAME = "ESC/VP.net"
 ESCVPNAME = "ESC/VP"
+ESCVP_HELLO_COMMAND = "\r"
+
 ERROR = "ERR"
 PWR_OFF_STATE = "04"
-ESCVP_HELLO_COMMAND = "\r"
 COLON = ":"
 CR = "\r"
 CR_COLON = CR + COLON

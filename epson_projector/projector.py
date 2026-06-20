@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 
 from .base_connection import BaseProjectorConnection
-from .const import BUSY, TCP_PORT, HTTP_PORT, POWER
+from .const import BUSY, ESCVPNET_PORT, HTTP_PORT, POWER
 from .timeout import get_timeout
 
 from .lock import Lock
@@ -72,7 +72,7 @@ class Projector:
         :param timeout_scale     Factor to multiply default timeouts by (for slow projectors)
         """
         from .projector_tcp import ProjectorTcp
-        return cls(connection=ProjectorTcp(host, TCP_PORT, password=password), timeout_scale=timeout_scale)
+        return cls(connection=ProjectorTcp(host, ESCVPNET_PORT, password=password), timeout_scale=timeout_scale)
 
     @classmethod
     def create_serial(

@@ -217,7 +217,7 @@ async def test_get_serial_number_returns_value_when_projector_is_on(
     projector = Projector(connection=connection)
 
     monkeypatch.setattr(
-        "epson_projector.projector_http.TCP_SERIAL_PORT",
+        "epson_projector.easymp.EASYMP_PORT",
         fake_serial_number_server.port,
     )
 
