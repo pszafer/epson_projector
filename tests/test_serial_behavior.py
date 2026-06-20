@@ -131,3 +131,21 @@ async def test_serial_get_serial_number_returns_value():
     """get_serial_number delegates to the SNO property query over serial."""
     projector, _ = _make_projector_with_open_serial(b"SNO=XY12345678\r:")
     assert await projector.get_serial_number() == "XY12345678"
+
+
+async def test_serial_close_ignores_peer_closed_oserror():
+    """close() should not fail when the peer closes before wait_closed resolves."""
+
+    class _PeerClosedWriter(_FakeSerialWriter):
+        async def wait_closed(self) -> None:
+            raise OSError(5, "socket closed by peer")
+
+    connection = ProjectorSerial("/dev/ttyUSB0")
+    connection._writer = _PeerClosedWriter()
+    connection._isOpen = True
+
+    projector = Projector(connection=connection)
+    await projector.close()
+
+    assert connection._writer is None
+    assert connection._isOpen is False
