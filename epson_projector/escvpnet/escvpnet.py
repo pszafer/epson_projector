@@ -69,6 +69,23 @@ def raise_from_status(status: MessageStatus) -> None:
             raise EscVpNetUnknownStatus(f"Unknown status: {status}")
 
 
+def build_password_request(
+    password: str | None = None,
+    new_password: str | None = None,
+) -> Message:
+    headers: list[HeaderBase] = []
+    if password is not None:
+        headers.append(PasswordHeader(password=password))
+    if new_password is not None:
+        headers.append(NewPasswordHeader(password=new_password))
+
+    return Message(
+        type_id=MessageType.PASSWORD,
+        status=MessageStatus.REQUEST,
+        headers=headers,
+    )
+
+
 class HelloProtocol(asyncio.DatagramProtocol):
     """Protocol for receiving responses to HELLO message."""
 
@@ -186,23 +203,6 @@ class EscVpNet:
 
     # Session mode (TCP) commands
 
-    @staticmethod
-    def _build_password_request(
-        password: str | None = None,
-        new_password: str | None = None,
-    ) -> Message:
-        headers: list[HeaderBase] = []
-        if password is not None:
-            headers.append(PasswordHeader(password=password))
-        if new_password is not None:
-            headers.append(NewPasswordHeader(password=new_password))
-
-        return Message(
-            type_id=MessageType.PASSWORD,
-            status=MessageStatus.REQUEST,
-            headers=headers,
-        )
-
     async def _request(
         self,
         message: Message,
@@ -254,7 +254,7 @@ class EscVpNet:
         Returns True if password is valid (or not needed if None was passed)
         """
         response_message, _, _ = await self._request(
-            self._build_password_request(password=self._password)
+            build_password_request(password=self._password)
         )
 
         return response_message.status == MessageStatus.OK
@@ -268,7 +268,7 @@ class EscVpNet:
         verify_password(new_password)
 
         response_message, _, _ = await self._request(
-            self._build_password_request(
+            build_password_request(
                 password=self._password,
                 new_password=new_password,
             )
