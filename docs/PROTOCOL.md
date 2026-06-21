@@ -42,7 +42,7 @@ This connection method is implemented in `protocol_tcp.py`
 
 ESC/VP.net is used with projectors connected over a network. It uses a TCP socket and after connecting does some handshaking and then it basically behaves like the Serial connection.
 
-Searching for ESC/VP.net results in this specification <https://archive.org/details/manualzz-id-1050273/mode/2up>
+Searching for ESC/VP.net results in [this specification](https://www.epson.com.au/d/pub/epson/techtips/escvp.netmanual_e_f.pdf) from an EPSON website.
 
 ESC/VP.net adds a number of additional commands to the ESC/VP21 command set. These are mostly commands to set/get network related configuration. Check the specification for the full list. Not every command is implemented on all projectors.
 
