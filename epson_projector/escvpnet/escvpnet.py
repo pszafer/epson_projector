@@ -69,6 +69,23 @@ def raise_from_status(status: MessageStatus) -> None:
             raise EscVpNetUnknownStatus(f"Unknown status: {status}")
 
 
+def build_password_request(
+    password: str | None = None,
+    new_password: str | None = None,
+) -> Message:
+    headers: list[HeaderBase] = []
+    if password is not None:
+        headers.append(PasswordHeader(password=password))
+    if new_password is not None:
+        headers.append(NewPasswordHeader(password=new_password))
+
+    return Message(
+        type_id=MessageType.PASSWORD,
+        status=MessageStatus.REQUEST,
+        headers=headers,
+    )
+
+
 class HelloProtocol(asyncio.DatagramProtocol):
     """Protocol for receiving responses to HELLO message."""
 
@@ -94,24 +111,9 @@ class ProjectorInfo:
     im_type: int
     command_type: CommandType
 
-
-class EscVpNet:
-    """Class for ESC/VP.net communication."""
-
-    def __init__(
-        self, host: str, port: int = ESC_VPNET_PORT, password: str | None = None
-    ) -> None:
-        self._host = host
-        self._port = port
-
-        verify_password(password)
-        self._password = password
-
-    # Session-less mode (UDP) commands
-
-    @staticmethod
-    def _projector_info_from_hello(
-        ip_address: str, message: Message
+    @classmethod
+    def from_hello_message(
+        cls, ip_address: str, message: Message
     ) -> ProjectorInfo | None:
         if message.type_id != MessageType.HELLO or message.status != MessageStatus.OK:
             return None
@@ -131,7 +133,7 @@ class EscVpNet:
                 command_type = header.command_type
 
         if projector_name and im_type is not None and command_type is not None:
-            return ProjectorInfo(
+            return cls(
                 ip=ip_address,
                 projector_name=projector_name,
                 im_type=im_type,
@@ -139,6 +141,20 @@ class EscVpNet:
             )
 
         return None
+
+class EscVpNet:
+    """Class for ESC/VP.net communication."""
+
+    def __init__(
+        self, host: str, port: int = ESC_VPNET_PORT, password: str | None = None
+    ) -> None:
+        self._host = host
+        self._port = port
+
+        verify_password(password)
+        self._password = password
+
+    # Session-less mode (UDP) commands
 
     @staticmethod
     async def discover(response_wait_time: float = 2) -> list[ProjectorInfo]:
@@ -179,30 +195,13 @@ class EscVpNet:
             message = await Message.from_bytes(data)
             _LOGGER.debug("Received response from %s: %s", ip_address, message)
 
-            projector_info = EscVpNet._projector_info_from_hello(ip_address, message)
+            projector_info = ProjectorInfo.from_hello_message(ip_address, message)
             if projector_info is not None:
                 projector_infos.append(projector_info)
 
         return projector_infos
 
     # Session mode (TCP) commands
-
-    @staticmethod
-    def _build_password_request(
-        password: str | None = None,
-        new_password: str | None = None,
-    ) -> Message:
-        headers: list[HeaderBase] = []
-        if password is not None:
-            headers.append(PasswordHeader(password=password))
-        if new_password is not None:
-            headers.append(NewPasswordHeader(password=new_password))
-
-        return Message(
-            type_id=MessageType.PASSWORD,
-            status=MessageStatus.REQUEST,
-            headers=headers,
-        )
 
     async def _request(
         self,
@@ -255,7 +254,7 @@ class EscVpNet:
         Returns True if password is valid (or not needed if None was passed)
         """
         response_message, _, _ = await self._request(
-            self._build_password_request(password=self._password)
+            build_password_request(password=self._password)
         )
 
         return response_message.status == MessageStatus.OK
@@ -269,7 +268,7 @@ class EscVpNet:
         verify_password(new_password)
 
         response_message, _, _ = await self._request(
-            self._build_password_request(
+            build_password_request(
                 password=self._password,
                 new_password=new_password,
             )

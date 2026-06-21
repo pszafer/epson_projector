@@ -58,8 +58,8 @@ class ImEvent:
     def __str__(self) -> str:
         return f"ImEvent(event_code={self.event_code}, power_status={self.power_status}, warning_type={self.warning_type.name}, alarm_type={self.alarm_type.name})"
 
-    @staticmethod
-    def from_message(raw_message: bytes) -> ImEvent:
+    @classmethod
+    def from_message(cls, raw_message: bytes) -> ImEvent:
         """Parse an IMEVENT message and return an ImEvent object."""
 
         # Example message from LS11000
@@ -87,7 +87,7 @@ class ImEvent:
 
         # Any postfixes like T1 and F1 are discarded because the meaning is unknown.
 
-        return ImEvent(
+        return cls(
             event_code=event_code,
             power_status=power_status,
             warning_type=warning_type,
