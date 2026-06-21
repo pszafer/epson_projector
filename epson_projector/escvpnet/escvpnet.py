@@ -94,24 +94,9 @@ class ProjectorInfo:
     im_type: int
     command_type: CommandType
 
-
-class EscVpNet:
-    """Class for ESC/VP.net communication."""
-
-    def __init__(
-        self, host: str, port: int = ESC_VPNET_PORT, password: str | None = None
-    ) -> None:
-        self._host = host
-        self._port = port
-
-        verify_password(password)
-        self._password = password
-
-    # Session-less mode (UDP) commands
-
-    @staticmethod
-    def _projector_info_from_hello(
-        ip_address: str, message: Message
+    @classmethod
+    def from_hello_message(
+        cls, ip_address: str, message: Message
     ) -> ProjectorInfo | None:
         if message.type_id != MessageType.HELLO or message.status != MessageStatus.OK:
             return None
@@ -131,7 +116,7 @@ class EscVpNet:
                 command_type = header.command_type
 
         if projector_name and im_type is not None and command_type is not None:
-            return ProjectorInfo(
+            return cls(
                 ip=ip_address,
                 projector_name=projector_name,
                 im_type=im_type,
@@ -139,6 +124,20 @@ class EscVpNet:
             )
 
         return None
+
+class EscVpNet:
+    """Class for ESC/VP.net communication."""
+
+    def __init__(
+        self, host: str, port: int = ESC_VPNET_PORT, password: str | None = None
+    ) -> None:
+        self._host = host
+        self._port = port
+
+        verify_password(password)
+        self._password = password
+
+    # Session-less mode (UDP) commands
 
     @staticmethod
     async def discover(response_wait_time: float = 2) -> list[ProjectorInfo]:
@@ -179,7 +178,7 @@ class EscVpNet:
             message = await Message.from_bytes(data)
             _LOGGER.debug("Received response from %s: %s", ip_address, message)
 
-            projector_info = EscVpNet._projector_info_from_hello(ip_address, message)
+            projector_info = ProjectorInfo.from_hello_message(ip_address, message)
             if projector_info is not None:
                 projector_infos.append(projector_info)
 
