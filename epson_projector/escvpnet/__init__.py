@@ -15,7 +15,7 @@ from .error import (
     EscVpNetForbiddenStatus,
     EscVpNetUnknownStatus,
 )
-from .escvpnet import EscVpNet
+from .escvpnet import EscVpNet, ProjectorInfo, CommandType
 
 __all__ = [
     "EscVpNetBadRequestStatus",
@@ -27,4 +27,6 @@ __all__ = [
     "EscVpNetProtocolVersionNotSupportedStatus",
     "EscVpNetRequestNotAllowedStatus",
     "EscVpNetUnknownStatus",
+    "ProjectorInfo",
+    "CommandType",
 ]
