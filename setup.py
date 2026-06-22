@@ -19,7 +19,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/pszafer/epson_projector",
     install_requires=list(val.strip() for val in open('requirements.txt')),
-    packages=['epson_projector'],
+    packages=setuptools.find_packages(include=['epson_projector', 'epson_projector.*']),
     keywords=['epson', 'projector'],
     classifiers=(
         "Programming Language :: Python :: 3",
