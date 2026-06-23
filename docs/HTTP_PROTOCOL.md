@@ -2,7 +2,7 @@
 
 This is mostly reverse-engineered from `epson_projector/projector_http.py` in [epson-projector](https://github.com/pszafer/epson_projector) and observations of communication with LS11000 projector.
 
-It maybe part of the [Web API](https://download3.ebz.epson.net/dsc/f/03/00/12/82/04/c6e7ed44d7553969835eab058494d2d818493921/WebAPI_Specifications_EN_Ver1.1.0.pdf) because it uses the same authentication. On the other hand the found endpoints are not mentioned. However there is another endpoint for ESC/VP21 commands `/api/v**/control/escvp21`. Where `**` is the API version which is `01` in the document.
+It may be part of the [Web API](https://download3.ebz.epson.net/dsc/f/03/00/12/82/04/c6e7ed44d7553969835eab058494d2d818493921/WebAPI_Specifications_EN_Ver1.1.0.pdf) because it uses the same authentication. On the other hand the found endpoints are not mentioned. However there is another endpoint for ESC/VP21 commands `/api/v**/control/escvp21`. Where `**` is the API version which is `01` in the document.
 
 ---
 
@@ -115,10 +115,12 @@ GET /cgi-bin/directsend?CMD=VALUE
 ```
 
 The query parameter key is the ESC/VP21 command name, the value is the operand.
+It is possible to send more commands in one go.
 
 ```text
 GET /cgi-bin/directsend?CMODE=15
 GET /cgi-bin/directsend?ASPECT=00
+GET /cgi-bin/directsend?KEY=38&KEY=38
 ```
 
 ### Response
