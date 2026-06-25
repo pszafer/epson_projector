@@ -13,7 +13,7 @@ async def main_tcp(args):
     if args.password:
         password = getpass()
 
-    projector = epson.Projector(host=args.host, type='tcp', tcp_password=password)
+    projector = epson.Projector.create_escvpnet(host=args.host, password=password)
 
     data = await projector.get_power()
     print("Power:", data)
@@ -26,7 +26,7 @@ async def main_tcp(args):
 
     # await projector.send_command(PWR_OFF)
 
-    projector.close()
+    await projector.close()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(  # noqa: F821

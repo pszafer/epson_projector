@@ -71,13 +71,25 @@ class ProjectorSerial(BaseProjectorConnection):
         _LOGGER.error("Cannot open serial to Epson")
         return False
 
-    def close(self):
-        if self._writer and not self._writer.is_closing():
-            _LOGGER.debug("Closing serial connection")
-            self._writer.close()
-            self._writer = None
-            self._isOpen = False
-            self._timeouts = 0
+    async def close(self):
+        if not self._writer:
+            return
+
+        _LOGGER.debug("Closing serial connection")
+        writer = self._writer
+        self._writer = None
+        self._isOpen = False
+        self._timeouts = 0
+
+        try:
+            if not writer.is_closing():
+                writer.close()
+            await writer.wait_closed()
+        except OSError as e:
+            # A peer can close the socket before wait_closed() resolves.
+            _LOGGER.debug("Serial connection closed by peer while closing: %s", e)
+        except serialx.SerialException as e:
+            _LOGGER.warning("Serial exception while closing connection: %s", e)
 
     def _check_timeout_reconnect(self):
         if self._timeouts >= MAX_TIMEOUTS:
@@ -126,7 +138,7 @@ class ProjectorSerial(BaseProjectorConnection):
                 self._check_timeout_reconnect()
             except (serialx.SerialException, OSError) as se:
                 _LOGGER.error("Error during serial write/read: %s", se)
-                self.close()
+                await self.close()
 
         return False
 

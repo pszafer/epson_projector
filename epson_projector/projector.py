@@ -1,8 +1,10 @@
 """Main of Epson projector module."""
+from __future__ import annotations
+
 import logging
 
 from .base_connection import BaseProjectorConnection
-from .const import BUSY, ESCVPNET_PORT, HTTP_PORT, POWER, HTTP, TCP, SERIAL
+from .const import BUSY, ESCVPNET_PORT, HTTP_PORT, POWER
 from .timeout import get_timeout
 
 from .lock import Lock
@@ -19,47 +21,78 @@ class Projector:
 
     def __init__(
         self,
-        host,
-        websession=None,
-        type=HTTP,
+        connection: BaseProjectorConnection,
         timeout_scale=1.0,
-        http_port=HTTP_PORT,
-        tcp_password=None
     ):
         """
         Epson Projector controller.
 
-        :param str host:         Hostname/IP/serial to the projector
-        :param obj websession:   Websession to pass for HTTP protocol
-        :param str type:         Type of connection to use ('http', 'tcp', 'serial')
+        :param BaseProjectorConnection connection: Pre-initialized connection to use.
         :param timeout_scale     Factor to multiply default timeouts by (for slow projectors)
-        :param int http_port:    Port to connect to for HTTP protocol. Default 80.
-        :param str tcp_password: Password for the TCP connection.
         """
         self._lock = Lock()
-        self._type = type
         self._timeout_scale = timeout_scale
         self._power = None
-        self._projector:BaseProjectorConnection
-        if self._type == HTTP:
-            from .projector_http import ProjectorHttp
-            self._projector = ProjectorHttp(
-                host=host, websession=websession, port=http_port
-            )
-        elif self._type == TCP:
-            from .projector_tcp import ProjectorTcp
-            self._projector = ProjectorTcp(host, ESCVPNET_PORT, password=tcp_password)
-        elif self._type == SERIAL:
-            from .projector_serial import ProjectorSerial
-            self._projector = ProjectorSerial(host)
-        else:
-            raise ValueError(
-                f"Invalid type {self._type}."
-            )
+        self._projector = connection
 
-    def close(self):
+    @classmethod
+    def create_http(
+        cls,
+        host: str,
+        password: str | None = None,
+        port: int = HTTP_PORT,
+        timeout_scale=1.0,
+    ) -> Projector:
+        """
+        Create an Epson Projector connected through HTTP.
+
+        :param str host:             Hostname/IP to the projector
+        :param str | None password:  Optional password for HTTP
+        :param int port:             HTTP port. Default 80.
+        :param timeout_scale         Factor to multiply default timeouts by (for slow projectors)
+        """
+        from .projector_http import ProjectorHttp
+
+        return cls(connection=ProjectorHttp(
+            host=host, password=password, port=port
+        ), timeout_scale=timeout_scale)
+
+    @classmethod
+    def create_escvpnet(
+        cls,
+        host: str,
+        password: str | None = None,
+        timeout_scale=1.0
+    ) -> Projector:
+        """
+        Create an Epson Projector connected through ESC/VP.net.
+
+        :param str host:             Hostname/IP to the projector
+        :param str | None password:  Optional password for ESC/VP.net connection
+        :param timeout_scale     Factor to multiply default timeouts by (for slow projectors)
+        """
+        from .projector_tcp import ProjectorTcp
+        return cls(connection=ProjectorTcp(host, ESCVPNET_PORT, password=password), timeout_scale=timeout_scale)
+
+    @classmethod
+    def create_serial(
+        cls,
+        url: str,
+        timeout_scale=1.0,
+    ) -> Projector:
+        """
+        Create an Epson Projector connected through serial.
+
+        :param str url:          Serialx supported URL for the projector
+        :param timeout_scale     Factor to multiply default timeouts by (for slow projectors)
+        """
+        from .projector_serial import ProjectorSerial
+        return cls(connection=ProjectorSerial(url), timeout_scale=timeout_scale)
+
+
+    async def close(self):
         """Close connection."""
-        self._projector.close()
+        await self._projector.close()
 
     def set_timeout_scale(self, timeout_scale=1.0):
         """Set timeout scale for commands (to compensate for slow projectors)."""

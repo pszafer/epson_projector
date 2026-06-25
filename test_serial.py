@@ -18,9 +18,10 @@ logging.basicConfig(level=logging.DEBUG)
 
 async def main_serial(args):
     """Run main with serial connection."""
-    projector = epson.Projector(host=args.serial_url,
-                                type='serial',
-                                timeout_scale=2.0)
+    projector = epson.Projector.create_serial(
+        url=args.serial_url,
+        timeout_scale=2.0
+    )
     data = await projector.get_power()
     print(data)
     cmd = None
@@ -34,7 +35,8 @@ async def main_serial(args):
 
     serialno = await projector.get_serial_number()
     print("Projector serial number:", serialno)
-    projector.close()
+
+    await projector.close()
 
 
 if __name__ == "__main__":

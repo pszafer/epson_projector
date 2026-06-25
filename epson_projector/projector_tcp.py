@@ -65,13 +65,15 @@ class ProjectorTcp(BaseProjectorConnection):
         except EscVpNetConnectionError as e:
             raise ProjectorUnavailableError("Connection error") from e
 
-    def close(self) -> None:
-        if self._listener_task:
-            self._listener_task.cancel()
-            self._listener_task = None
+    async def close(self) -> None:
         if self._writer:
             self._writer.close()
+            await self._writer.wait_closed()
             self._writer = None
+        if self._listener_task:
+            self._listener_task.cancel()
+            await self._listener_task
+            self._listener_task = None
 
     async def _listener_task_impl(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """Listener task for messages coming from the projector."""
@@ -149,7 +151,7 @@ class ProjectorTcp(BaseProjectorConnection):
                         if response == ERROR:
                             return False
                         return response
-                except asyncio.TimeoutError as e:
+                except asyncio.TimeoutError:
                     _LOGGER.error("Timeout error receiving response for command %s", command)
                     if pending_command_future := self._pending_request_future:
                         pending_command_future.cancel()

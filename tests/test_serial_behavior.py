@@ -7,9 +7,8 @@ import asyncio
 from collections import deque
 from unittest.mock import patch
 
-import pytest
-
-from epson_projector.const import BUSY, POWER, SERIAL, SNO
+from epson_projector.const import BUSY, POWER
+from epson_projector.projector_serial import ProjectorSerial
 from epson_projector.projector import Projector
 
 
@@ -56,10 +55,12 @@ def _make_projector_with_open_serial(*responses: bytes) -> tuple[Projector, _Fak
     reader = _FakeSerialReader(*responses)
     writer = _FakeSerialWriter()
 
-    projector = Projector("/dev/ttyUSB0", type=SERIAL)
-    projector._projector._reader = reader
-    projector._projector._writer = writer
-    projector._projector._isOpen = True
+    connection = ProjectorSerial("/dev/ttyUSB0")
+    connection._reader = reader
+    connection._writer = writer
+    connection._isOpen = True
+
+    projector = Projector(connection=connection)
     return projector, writer
 
 
@@ -102,7 +103,8 @@ async def test_serial_connection_is_established_when_not_open(monkeypatch):
         return reader, writer
 
     with patch("serialx.open_serial_connection", new=fake_open_serial_connection):
-        projector = Projector("/dev/ttyUSB0", type=SERIAL)
+        connection = ProjectorSerial("/dev/ttyUSB0")
+        projector = Projector(connection=connection)
         # _isOpen is False by default; first call triggers async_init
         value = await projector.get_property(POWER)
 
@@ -129,3 +131,21 @@ async def test_serial_get_serial_number_returns_value():
     """get_serial_number delegates to the SNO property query over serial."""
     projector, _ = _make_projector_with_open_serial(b"SNO=XY12345678\r:")
     assert await projector.get_serial_number() == "XY12345678"
+
+
+async def test_serial_close_ignores_peer_closed_oserror():
+    """close() should not fail when the peer closes before wait_closed resolves."""
+
+    class _PeerClosedWriter(_FakeSerialWriter):
+        async def wait_closed(self) -> None:
+            raise OSError(5, "socket closed by peer")
+
+    connection = ProjectorSerial("/dev/ttyUSB0")
+    connection._writer = _PeerClosedWriter()
+    connection._isOpen = True
+
+    projector = Projector(connection=connection)
+    await projector.close()
+
+    assert connection._writer is None
+    assert connection._isOpen is False

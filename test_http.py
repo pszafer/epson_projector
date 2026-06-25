@@ -15,29 +15,22 @@ _LOGGER = logging.getLogger(__name__)
 async def main_web(args):
     """Run main with aiohttp ClientSession."""
 
-    middlewares = []
-    if args.password:
-        _LOGGER.info("Using password for authentication")
-        digest_auth = aiohttp.DigestAuthMiddleware(
-            login="EPSONWEB", password=args.password
-        )
-        middlewares.append(digest_auth)
+    """Use Projector class of epson module and check if it is turned on."""
+    projector = epson.Projector.create_http(
+        host=args.host,
+        password=args.password,
+        port=args.port,
+    )
 
-    async with aiohttp.ClientSession(middlewares=middlewares) as websession:
-        """Use Projector class of epson module and check if it is turned on."""
-        projector = epson.Projector(
-            host=args.host,
-            websession=websession,
-            type="http",
-            http_port=args.port,
-        )
-        data = await projector.get_property(POWER)
-        print(data)
-        data = await projector.get_serial_number()
-        print(data)
-    #    await projector.send_command(PWR_ON)
-        # data = await projector.send_request("EEMP0100À¨E")
-        # print(data)
+    data = await projector.get_property(POWER)
+    print(data)
+    data = await projector.get_serial_number()
+    print(data)
+#    await projector.send_command(PWR_ON)
+    # data = await projector.send_request("EEMP0100À¨E")
+    # print(data)
+
+    await projector.close()
 
 
 if __name__ == "__main__":

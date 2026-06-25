@@ -8,7 +8,7 @@ from typing import AsyncGenerator
 
 import pytest
 
-from epson_projector.const import BUSY, POWER, TCP
+from epson_projector.const import BUSY, POWER
 from epson_projector.imevent import AlarmType, ProjectorStatus, WarningType
 from epson_projector.projector import Projector
 from epson_projector.projector_tcp import ProjectorTcp
@@ -109,12 +109,12 @@ async def fake_serial_number_server() -> AsyncGenerator[_FakeSerialNumberServer,
 
 @pytest.fixture
 async def projector(fake_projector_tcp: _FakeTcpProjector) -> AsyncGenerator[Projector, None]:
-    p = Projector(fake_projector_tcp.host, type=TCP)
-    p._projector._port = fake_projector_tcp.port  # override default 3629 with the ephemeral port
+    connection = ProjectorTcp(fake_projector_tcp.host, port=fake_projector_tcp.port)
+    p = Projector(connection=connection)
     try:
         yield p
     finally:
-        p.close()
+        await p.close()
 
 
 # ---------------------------------------------------------------------------
@@ -200,4 +200,4 @@ async def test_tcp_on_imevent_callback_triggered(fake_projector_tcp):
         assert received[0].warning_type == WarningType.NO_SIGNAL
         assert received[0].alarm_type == AlarmType(0)
     finally:
-        projector_tcp.close()
+        await projector_tcp.close()
